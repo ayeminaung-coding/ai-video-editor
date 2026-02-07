@@ -1,8 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* globals.css - Global Styles with Theme Support */
 /* AI Video Editor - Dark/Light Mode Theme Variables */
-
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* Light Mode Colors (Default) */
 :root {
