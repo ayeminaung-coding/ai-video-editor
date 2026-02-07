@@ -14,6 +14,7 @@ import CreatorToolsPage from './CreatorToolsPage';
 import ScriptHelperPage from './ScriptHelperPage';
 import WorkflowsPage from './WorkflowsPage';
 import CreatorWorkflowPage from './CreatorWorkflowPage';
+import ResourceFinderPage from './ResourceFinderPage';
 
 interface EditSettings {
   trimStart: number;
@@ -133,6 +134,10 @@ const App: React.FC = () => {
                 <Route
                   path="/creator/workflow-board"
                   element={<CreatorWorkflowPage />}
+                />
+                <Route
+                  path="/creator/resources"
+                  element={<ResourceFinderPage />}
                 />
               </Routes>
             </main>

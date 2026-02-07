@@ -99,6 +99,7 @@ const EditorPage: React.FC<EditorPageProps> = ({ videoFile, onExport }) => {
 
             {/* Quick Actions */}
             <div className="flex gap-2 flex-wrap">
+              {/* Basic speed tweaks */}
               <button
                 onClick={() => setSettings(prev => ({ ...prev, speed: 0.5 }))}
                 className="px-3 py-2 bg-surface-secondary text-text-primary rounded-lg hover:bg-surface-tertiary transition-colors text-sm"
@@ -117,17 +118,46 @@ const EditorPage: React.FC<EditorPageProps> = ({ videoFile, onExport }) => {
               >
                 2x Speed
               </button>
+
+              {/* Presets for creator workflows */}
               <button
-                onClick={() => setSettings(prev => ({ ...prev, brightness: 1.2 }))}
+                onClick={() =>
+                  setSettings(prev => ({
+                    ...prev,
+                    speed: 1,
+                    brightness: 1.1,
+                    contrast: 1.1,
+                  }))
+                }
                 className="px-3 py-2 bg-surface-secondary text-text-primary rounded-lg hover:bg-surface-tertiary transition-colors text-sm"
               >
-                Brighter
+                TikTok Recap
               </button>
               <button
-                onClick={() => setSettings(prev => ({ ...prev, contrast: 1.2 }))}
+                onClick={() =>
+                  setSettings(prev => ({
+                    ...prev,
+                    speed: 1,
+                    brightness: 1.15,
+                    contrast: 1.2,
+                  }))
+                }
                 className="px-3 py-2 bg-surface-secondary text-text-primary rounded-lg hover:bg-surface-tertiary transition-colors text-sm"
               >
-                More Contrast
+                Cat Meme Pop
+              </button>
+              <button
+                onClick={() =>
+                  setSettings(prev => ({
+                    ...prev,
+                    speed: 0.75,
+                    brightness: 0.95,
+                    contrast: 1.1,
+                  }))
+                }
+                className="px-3 py-2 bg-surface-secondary text-text-primary rounded-lg hover:bg-surface-tertiary transition-colors text-sm"
+              >
+                Dark Cinema
               </button>
             </div>
           </div>

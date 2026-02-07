@@ -12,6 +12,13 @@ const ScriptHelperPage: React.FC = () => {
 
   const [notes, setNotes] = useState('');
 
+  const prettyStyleLabel =
+    style === 'recap'
+      ? 'movie recap'
+      : style === 'ending'
+      ? 'ending explained'
+      : 'meme / funny narration';
+
   return (
     <div className="min-h-screen bg-bg-primary p-4 md:p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -94,7 +101,7 @@ const ScriptHelperPage: React.FC = () => {
           <pre className="mt-2 whitespace-pre-wrap text-xs md:text-sm bg-surface-primary border border-border-primary rounded-lg p-3 text-text-primary">
 {`You are helping me write a short-form video script.
 
-Video type: ${style === 'recap' ? 'movie recap' : style === 'ending' ? 'ending explained' : 'meme / funny narration'}
+Video type: ${prettyStyleLabel}
 Title or topic: ${movieTitle || '[fill in movie / topic here]'}
 Target length: ~${duration} seconds.
 
@@ -115,6 +122,23 @@ Additional notes from me:
 ${notes || '[none]'}
 `}
           </pre>
+
+          {/* Quick meme one-liners helper */}
+          {style === 'meme' && (
+            <div className="mt-4 border-t border-border-primary pt-3">
+              <h3 className="text-sm font-medium text-text-primary mb-1">Meme one-liner template</h3>
+              <p className="text-text-secondary text-xs mb-1">
+                Use this prompt when you only need short meme text (for cat videos, etc.).
+              </p>
+              <pre className="whitespace-pre-wrap text-xs md:text-sm bg-surface-primary border border-border-primary rounded-lg p-3 text-text-primary">
+{`Give me 10 short meme lines for a ${movieTitle || 'cat / funny'} video.
+
+Style: ${language === 'en-mm' ? 'mix of English and casual Burmese' : 'natural English'}.
+Each line should be:\n- Very short (1 sentence)\n- Easy to read on screen\n- Suitable for TikTok / Shorts captions.
+`}
+              </pre>
+            </div>
+          )}
         </section>
       </div>
     </div>
