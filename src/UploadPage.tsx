@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { uploadVideoMetadata } from './api';
 
 interface UploadPageProps {
   onUpload: (file: File) => void;
@@ -15,7 +16,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ onUpload }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     if (!file.type.startsWith('video/')) {
       setError('Please select a video file');
       return;
@@ -30,7 +31,10 @@ const UploadPage: React.FC<UploadPageProps> = ({ onUpload }) => {
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
+    // Call backend to register the upload (metadata only for now)
+    void uploadVideoMetadata(file);
+
+    // Simulate upload progress locally for UX
     const interval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {

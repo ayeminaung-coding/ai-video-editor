@@ -1,8 +1,9 @@
 // DashboardPage.tsx - User Dashboard Page
 // React component for user dashboard and video history
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getVideos, ApiVideo } from './api';
 
 interface Video {
   id: string;
@@ -18,6 +19,34 @@ interface DashboardPageProps {
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ videos }) => {
   const navigate = useNavigate();
+  const [remoteVideos, setRemoteVideos] = useState<Video[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const apiVideos = await getVideos();
+        const mapped: Video[] = apiVideos.map((v: ApiVideo) => ({
+          id: v.id,
+          name: v.title || v.name || v.filename || 'Untitled video',
+          duration: '0:00',
+          status: v.status,
+          createdAt: v.createdAt?.slice(0, 10) || '',
+        }));
+        setRemoteVideos(mapped);
+      } catch (err) {
+        console.error('Failed to load videos', err);
+        setLoadError('Could not load videos from server');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, []);
 
   const handleUpload = () => {
     navigate('/upload');
@@ -60,7 +89,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ videos }) => {
     },
   ];
 
-  const displayVideos = videos.length > 0 ? videos : sampleVideos;
+  const effectiveVideos = remoteVideos.length > 0 ? remoteVideos : videos;
+  const displayVideos = effectiveVideos.length > 0 ? effectiveVideos : sampleVideos;
 
   return (
     <div className="min-h-screen bg-bg-primary p-4 md:p-6">
@@ -106,7 +136,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ videos }) => {
         {/* Video List */}
         <div className="bg-surface-secondary rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-text-primary">Recent Videos</h2>
+            <div>
+              <h2 className="text-lg font-medium text-text-primary">Recent Videos</h2>
+              {isLoading && (
+                <p className="text-xs text-text-secondary mt-1">Loading from backend...</p>
+              )}
+              {loadError && !isLoading && (
+                <p className="text-xs text-accent-error mt-1">{loadError}</p>
+              )}
+            </div>
             <button className="text-sm text-accent-primary hover:underline">
               View All
             </button>
