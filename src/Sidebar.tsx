@@ -27,15 +27,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   ];
 
+  // Tools in the sidebar are now "creator tools" only, so it's easy to see
+  // everything you use as a content creator in one place.
   const tools = [
-    { path: '/editor', label: 'Trim', icon: '✂️' },
-    { path: '/editor', label: 'Speed', icon: '⚡' },
-    { path: '/editor', label: 'Volume', icon: '🔊' },
-    { path: '/editor', label: 'Text', icon: '📝' },
-    { path: '/editor', label: 'Music', icon: '🎵' },
-  ];
-
-  const creatorTools = [
     { path: '/creator', label: 'Creator Tools', icon: '🧰' },
     { path: '/creator/script-helper', label: 'Script Helper', icon: '📜' },
     { path: '/creator/workflows', label: 'Workflows', icon: '🧭' },
@@ -119,36 +113,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
           </div>
         </div>
 
-        {/* Tools */}
-        <div className="p-4 border-b border-border-primary">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">Tools</h3>
-          <div className="space-y-1">
-            {tools.map((tool) => (
-              <Link
-                key={tool.path}
-                to={tool.path}
-                onClick={() => setIsOpen(false)}
-                className={`
-                  flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                  ${
-                    location.pathname === tool.path
-                      ? 'bg-accent-primary/10 text-accent-primary'
-                      : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
-                  }
-                `}
-              >
-                <span className="text-lg">{tool.icon}</span>
-                <span>{tool.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Creator Tools */}
+        {/* Tools (Creator-focused) */}
         <div className="p-4 border-b border-border-primary">
           <h3 className="text-sm font-medium text-text-secondary mb-3">Creator Tools</h3>
           <div className="space-y-1">
-            {creatorTools.map((tool) => (
+            {tools.map((tool) => (
               <Link
                 key={tool.path}
                 to={tool.path}
