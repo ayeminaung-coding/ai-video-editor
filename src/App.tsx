@@ -10,6 +10,9 @@ import DashboardPage from './DashboardPage';
 import UploadPage from './UploadPage';
 import EditorPage from './EditorPage';
 import PreviewPage from './PreviewPage';
+import CreatorToolsPage from './CreatorToolsPage';
+import ScriptHelperPage from './ScriptHelperPage';
+import WorkflowsPage from './WorkflowsPage';
 
 interface EditSettings {
   trimStart: number;
@@ -88,6 +91,10 @@ const App: React.FC = () => {
                   element={<DashboardPage videos={videos} />}
                 />
                 <Route
+                  path="/dashboard"
+                  element={<DashboardPage videos={videos} />}
+                />
+                <Route
                   path="/upload"
                   element={<UploadPage onUpload={handleUpload} />}
                 />
@@ -109,6 +116,18 @@ const App: React.FC = () => {
                       onExport={handleExport}
                     />
                   }
+                />
+                <Route
+                  path="/creator"
+                  element={<CreatorToolsPage />}
+                />
+                <Route
+                  path="/creator/script-helper"
+                  element={<ScriptHelperPage />}
+                />
+                <Route
+                  path="/creator/workflows"
+                  element={<WorkflowsPage />}
                 />
               </Routes>
             </main>

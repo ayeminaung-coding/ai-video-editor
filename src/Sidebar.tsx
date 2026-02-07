@@ -35,6 +35,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/editor', label: 'Music', icon: '🎵' },
   ];
 
+  const creatorTools = [
+    { path: '/creator', label: 'Creator Tools', icon: '🧰' },
+    { path: '/creator/script-helper', label: 'Script Helper', icon: '📜' },
+    { path: '/creator/workflows', label: 'Workflows', icon: '🧭' },
+  ];
+
   return (
     <>
       {/* Mobile Toggle Button */}
@@ -118,6 +124,31 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
           <h3 className="text-sm font-medium text-text-secondary mb-3">Tools</h3>
           <div className="space-y-1">
             {tools.map((tool) => (
+              <Link
+                key={tool.path}
+                to={tool.path}
+                onClick={() => setIsOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                  ${
+                    location.pathname === tool.path
+                      ? 'bg-accent-primary/10 text-accent-primary'
+                      : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
+                  }
+                `}
+              >
+                <span className="text-lg">{tool.icon}</span>
+                <span>{tool.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Creator Tools */}
+        <div className="p-4 border-b border-border-primary">
+          <h3 className="text-sm font-medium text-text-secondary mb-3">Creator Tools</h3>
+          <div className="space-y-1">
+            {creatorTools.map((tool) => (
               <Link
                 key={tool.path}
                 to={tool.path}
