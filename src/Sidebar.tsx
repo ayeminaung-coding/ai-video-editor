@@ -33,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/creator', label: 'Creator Tools', icon: '🧰' },
     { path: '/creator/script-helper', label: 'Script Helper', icon: '📜' },
     { path: '/creator/workflows', label: 'Workflows', icon: '🧭' },
+    { path: '/creator/workflow-board', label: 'Workflow Board', icon: '🗂' },
   ];
 
   return (

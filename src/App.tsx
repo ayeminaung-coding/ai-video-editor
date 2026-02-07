@@ -13,6 +13,7 @@ import PreviewPage from './PreviewPage';
 import CreatorToolsPage from './CreatorToolsPage';
 import ScriptHelperPage from './ScriptHelperPage';
 import WorkflowsPage from './WorkflowsPage';
+import CreatorWorkflowPage from './CreatorWorkflowPage';
 
 interface EditSettings {
   trimStart: number;
@@ -128,6 +129,10 @@ const App: React.FC = () => {
                 <Route
                   path="/creator/workflows"
                   element={<WorkflowsPage />}
+                />
+                <Route
+                  path="/creator/workflow-board"
+                  element={<CreatorWorkflowPage />}
                 />
               </Routes>
             </main>
