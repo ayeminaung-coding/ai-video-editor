@@ -1,12 +1,10 @@
-// Header.tsx - Navigation Header Component
-// React component for the main navigation header
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
+import { useSettings } from './contexts/SettingsContext';
 
 const Header: React.FC = () => {
-
+  const { setIsModalOpen } = useSettings();
 
   return (
     <header className="bg-surface-primary border-b border-border-primary px-4 md:px-6 py-3 sticky top-0 z-50">
@@ -34,7 +32,10 @@ const Header: React.FC = () => {
             <div className="text-text-secondary text-sm">
               Welcome, User
             </div>
-            <button className="px-3 py-2 bg-surface-secondary text-text-primary rounded-lg hover:bg-surface-tertiary transition-colors text-sm">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-3 py-2 bg-surface-secondary text-text-primary rounded-lg hover:bg-surface-tertiary transition-colors text-sm"
+            >
               Settings
             </button>
           </div>

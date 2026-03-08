@@ -1,5 +1,4 @@
-// Sidebar.tsx - Sidebar Component
-// React component for the sidebar with quick actions
+// Sidebar.tsx - Sidebar Component with desktop collapse toggle
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -10,25 +9,27 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const toggleSidebar = () => {
-    const newState = !isOpen;
-    setIsOpen(newState);
-    if (onToggle) {
-      onToggle(newState);
-    }
+  const toggleDesktop = () => {
+    const next = !desktopOpen;
+    setDesktopOpen(next);
+    onToggle?.(next);
   };
 
+  const toggleMobile = () => setMobileOpen(prev => !prev);
+  const closeMobile = () => setMobileOpen(false);
+
   const quickActions = [
+    { path: '/translate', label: 'Translate', icon: '🌏' },
+    { path: '/subtitle-preview', label: 'Sub Preview', icon: '🎞️' },
     { path: '/upload', label: 'Upload', icon: '📤' },
     { path: '/editor', label: 'Edit', icon: '✏️' },
     { path: '/preview', label: 'Preview', icon: '👁️' },
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   ];
 
-  // Tools in the sidebar are now "creator tools" only, so it's easy to see
-  // everything you use as a content creator in one place.
   const tools = [
     { path: '/creator', label: 'Creator Tools', icon: '🧰' },
     { path: '/creator/script-helper', label: 'Script Helper', icon: '📜' },
@@ -37,115 +38,137 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/creator/resources', label: 'Resources', icon: '📂' },
   ];
 
+  const NavItem = ({
+    path, label, icon, onClick,
+  }: { path: string; label: string; icon: string; onClick?: () => void }) => {
+    const active = location.pathname === path;
+    return (
+      <Link
+        to={path}
+        onClick={onClick}
+        title={!desktopOpen ? label : undefined}
+        className={`
+          flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150
+          ${active
+            ? 'bg-accent-primary/10 text-accent-primary'
+            : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
+          }
+          ${!desktopOpen ? 'justify-center' : ''}
+        `}
+      >
+        <span className="text-lg shrink-0">{icon}</span>
+        {desktopOpen && (
+          <span className="text-sm font-medium truncate">{label}</span>
+        )}
+        {active && desktopOpen && (
+          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-accent-primary shrink-0" />
+        )}
+      </Link>
+    );
+  };
+
   return (
     <>
-      {/* Mobile Toggle Button */}
+      {/* Mobile FAB */}
       <button
-        onClick={toggleSidebar}
-        className="md:hidden fixed bottom-4 right-4 z-50 p-3 bg-accent-primary text-white rounded-full shadow-lg hover:bg-accent-primary-dark transition-colors"
+        onClick={toggleMobile}
+        className="md:hidden fixed bottom-4 right-4 z-50 w-12 h-12 bg-accent-primary text-white rounded-full shadow-xl flex items-center justify-center hover:bg-accent-primary-dark transition-colors"
         aria-label="Toggle sidebar"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
+        <span className="text-lg">{mobileOpen ? '✕' : '☰'}</span>
       </button>
 
-      {/* Sidebar Overlay (Mobile) */}
-      {isOpen && (
+      {/* Mobile backdrop */}
+      {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={toggleSidebar}
+          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          onClick={closeMobile}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar panel */}
       <aside
         className={`
-          fixed md:sticky top-0 left-0 h-screen w-64 bg-surface-primary border-r border-border-primary
-          transform transition-transform duration-200 z-50 flex flex-col
-          ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          fixed md:sticky top-0 left-0 h-screen bg-surface-primary border-r border-border-primary
+          flex flex-col z-50 overflow-hidden
+          transition-[width,transform] duration-200 ease-in-out
+          ${mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'}
+          ${desktopOpen ? 'md:w-64' : 'md:w-[60px]'}
         `}
       >
-        <div className="p-4 border-b border-border-primary flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-text-primary">Quick Actions</h2>
-            <button
-              onClick={toggleSidebar}
-              className="md:hidden p-1 text-text-secondary hover:text-text-primary"
+        {/* Header with toggle button */}
+        <div className="h-12 px-3 border-b border-border-primary flex-shrink-0 flex items-center justify-between gap-2">
+          {desktopOpen && (
+            <h2 className="text-sm font-bold text-text-primary tracking-wide truncate">Navigation</h2>
+          )}
+
+          {/* Desktop collapse/expand chevron */}
+          <button
+            onClick={toggleDesktop}
+            title={desktopOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            className={`
+              hidden md:flex items-center justify-center w-7 h-7 rounded-lg
+              text-text-secondary hover:text-text-primary hover:bg-surface-secondary
+              transition-colors
+              ${!desktopOpen ? 'mx-auto' : 'ml-auto'}
+            `}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16" height="16"
+              viewBox="0 0 24 24"
+              fill="none" stroke="currentColor"
+              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transform: desktopOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }}
             >
-              ✕
-            </button>
-          </div>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
+          {/* Mobile close */}
+          <button onClick={closeMobile} className="md:hidden p-1 text-text-secondary hover:text-text-primary ml-auto">
+            ✕
+          </button>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 border-b border-border-primary">
-            <h3 className="text-sm font-medium text-text-secondary mb-3">Navigation</h3>
-            <div className="space-y-1">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.path}
-                  to={action.path}
-                  onClick={() => setIsOpen(false)}
-                  className={`
-                  flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                  ${location.pathname === action.path
-                      ? 'bg-accent-primary/10 text-accent-primary'
-                      : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
-                    }
-                `}
-                >
-                  <span className="text-lg">{action.icon}</span>
-                  <span>{action.label}</span>
-                </Link>
+        {/* Scrollable nav area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-1">
+          {/* Quick Actions section */}
+          <div className="px-2 pt-2 pb-1">
+            {desktopOpen && (
+              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider px-2 mb-1.5">
+                Quick Actions
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {quickActions.map(a => (
+                <NavItem key={a.path} {...a} onClick={closeMobile} />
               ))}
             </div>
           </div>
 
-          {/* Tools (Creator-focused) */}
-          <div className="p-4 border-b border-border-primary">
-            <h3 className="text-sm font-medium text-text-secondary mb-3">Creator Tools</h3>
-            <div className="space-y-1">
-              {tools.map((tool) => (
-                <Link
-                  key={tool.path}
-                  to={tool.path}
-                  onClick={() => setIsOpen(false)}
-                  className={`
-                  flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                  ${location.pathname === tool.path
-                      ? 'bg-accent-primary/10 text-accent-primary'
-                      : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
-                    }
-                `}
-                >
-                  <span className="text-lg">{tool.icon}</span>
-                  <span>{tool.label}</span>
-                </Link>
+          <div className="mx-3 my-1 border-t border-border-primary" />
+
+          {/* Creator Tools section */}
+          <div className="px-2 py-1">
+            {desktopOpen && (
+              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider px-2 mb-1.5">
+                Creator Tools
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {tools.map(t => (
+                <NavItem key={t.path} {...t} onClick={closeMobile} />
               ))}
             </div>
           </div>
-
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 p-4 border-t border-border-primary">
-          <div className="text-xs text-text-tertiary text-center">
-            AI Video Editor v1.0.0
-          </div>
+        <div className="flex-shrink-0 p-3 border-t border-border-primary text-center">
+          <span className="text-xs text-text-tertiary">
+            {desktopOpen ? 'AI Video Editor v1.0.0' : 'v1'}
+          </span>
         </div>
       </aside>
     </>

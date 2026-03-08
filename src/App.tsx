@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './ThemeContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import DashboardPage from './DashboardPage';
@@ -15,6 +16,9 @@ import ScriptHelperPage from './ScriptHelperPage';
 import WorkflowsPage from './WorkflowsPage';
 import CreatorWorkflowPage from './CreatorWorkflowPage';
 import ResourceFinderPage from './ResourceFinderPage';
+import TranslatePage from './TranslatePage';
+import SubtitlePreviewPage from './SubtitlePreviewPage';
+import SettingsModal from './components/SettingsModal';
 
 interface EditSettings {
   trimStart: number;
@@ -81,69 +85,80 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <Router>
-        <div className="min-h-screen bg-bg-primary">
-          <Header />
-          <div className="flex">
-            <Sidebar onToggle={setSidebarOpen} />
-            <main className={`flex-1 transition-all duration-200 ${sidebarOpen ? 'ml-64' : ''}`}>
-              <Routes>
-                <Route
-                  path="/"
-                  element={<DashboardPage videos={videos} />}
-                />
-                <Route
-                  path="/dashboard"
-                  element={<DashboardPage videos={videos} />}
-                />
-                <Route
-                  path="/upload"
-                  element={<UploadPage onUpload={handleUpload} />}
-                />
-                <Route
-                  path="/editor"
-                  element={
-                    <EditorPage
-                      videoFile={videoFile}
-                      onExport={handleEdit}
-                    />
-                  }
-                />
-                <Route
-                  path="/preview"
-                  element={
-                    <PreviewPage
-                      videoFile={videoFile}
-                      settings={settings}
-                      onExport={handleExport}
-                    />
-                  }
-                />
-                <Route
-                  path="/creator"
-                  element={<CreatorToolsPage />}
-                />
-                <Route
-                  path="/creator/script-helper"
-                  element={<ScriptHelperPage />}
-                />
-                <Route
-                  path="/creator/workflows"
-                  element={<WorkflowsPage />}
-                />
-                <Route
-                  path="/creator/workflow-board"
-                  element={<CreatorWorkflowPage />}
-                />
-                <Route
-                  path="/creator/resources"
-                  element={<ResourceFinderPage />}
-                />
-              </Routes>
-            </main>
+      <SettingsProvider>
+        <Router>
+          <div className="min-h-screen bg-bg-primary">
+            <Header />
+            <SettingsModal />
+            <div className="flex">
+              <Sidebar onToggle={setSidebarOpen} />
+              <main className={`flex-1 transition-all duration-200 ${sidebarOpen ? 'md:ml-0' : 'md:ml-0'}`}>
+                <Routes>
+                  <Route
+                    path="/"
+                    element={<DashboardPage videos={videos} />}
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={<DashboardPage videos={videos} />}
+                  />
+                  <Route
+                    path="/upload"
+                    element={<UploadPage onUpload={handleUpload} />}
+                  />
+                  <Route
+                    path="/editor"
+                    element={
+                      <EditorPage
+                        videoFile={videoFile}
+                        onExport={handleEdit}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/preview"
+                    element={
+                      <PreviewPage
+                        videoFile={videoFile}
+                        settings={settings}
+                        onExport={handleExport}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/creator"
+                    element={<CreatorToolsPage />}
+                  />
+                  <Route
+                    path="/creator/script-helper"
+                    element={<ScriptHelperPage />}
+                  />
+                  <Route
+                    path="/creator/workflows"
+                    element={<WorkflowsPage />}
+                  />
+                  <Route
+                    path="/creator/workflow-board"
+                    element={<CreatorWorkflowPage />}
+                  />
+                  <Route
+                    path="/creator/resources"
+                    element={<ResourceFinderPage />}
+                  />
+                  <Route
+                    path="/translate"
+                    element={<TranslatePage />}
+                  />
+                  <Route
+                    path="/subtitle-preview"
+                    element={<SubtitlePreviewPage />}
+                  />
+                </Routes>
+              </main>
+            </div>
           </div>
-        </div>
-      </Router>
+        </Router>
+      </SettingsProvider>
     </ThemeProvider>
   );
 };
