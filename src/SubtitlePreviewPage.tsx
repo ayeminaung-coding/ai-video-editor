@@ -4,238 +4,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface SubLine {
-    id: number;
-    start: number;  // seconds
-    end: number;    // seconds
-    text: string;
-}
-
-interface SubStyle {
-    fontSize: number;
-    color: string;
-    bgOpacity: number;
-    position: 'bottom' | 'top';
-}
-
-// ─── SRT ↔ VTT Helpers ───────────────────────────────────────────────────────
-
-function parseSrt(raw: string): SubLine[] {
-    const blocks = raw.trim().split(/\r?\n\r?\n/);
-    const lines: SubLine[] = [];
-    for (const block of blocks) {
-        const rows = block.trim().split(/\r?\n/);
-        if (rows.length < 3) continue;
-        const id = parseInt(rows[0], 10);
-        const timeParts = rows[1].match(/(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}[,\.]\d{3})/);
-        if (!timeParts) continue;
-        const text = rows.slice(2).join('\n');
-        lines.push({ id, start: srtTimeToSec(timeParts[1]), end: srtTimeToSec(timeParts[2]), text });
-    }
-    return lines;
-}
-
-function srtTimeToSec(t: string): number {
-    const [hms, ms] = t.replace(',', '.').split('.');
-    const [h, m, s] = hms.split(':').map(Number);
-    return h * 3600 + m * 60 + s + Number('0.' + ms);
-}
-
-function secToVttTime(sec: number): string {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = Math.floor(sec % 60);
-    const ms = Math.round((sec % 1) * 1000);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
-}
-
-function secToSrtTime(sec: number): string {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = Math.floor(sec % 60);
-    const ms = Math.round((sec % 1) * 1000);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
-}
-
-function linesToVtt(lines: SubLine[], offsetSec: number): string {
-    let vtt = 'WEBVTT\n\n';
-    for (const l of lines) {
-        const s = Math.max(0, l.start + offsetSec);
-        const e = Math.max(s + 0.1, l.end + offsetSec);
-        vtt += `${l.id}\n${secToVttTime(s)} --> ${secToVttTime(e)}\n${l.text}\n\n`;
-    }
-    return vtt;
-}
-
-function linesToSrt(lines: SubLine[], offsetSec: number): string {
-    return lines.map((l, i) => {
-        const s = Math.max(0, l.start + offsetSec);
-        const e = Math.max(s + 0.1, l.end + offsetSec);
-        return `${i + 1}\n${secToSrtTime(s)} --> ${secToSrtTime(e)}\n${l.text}`;
-    }).join('\n\n');
-}
-
-function downloadText(content: string, filename: string) {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-}
-
-function formatTime(sec: number): string {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-// ─── Custom subtitle overlay (more control than native <track>) ───────────────
-
-const SubtitleOverlay: React.FC<{
-    lines: SubLine[];
-    currentTime: number;
-    offsetSec: number;
-    style: SubStyle;
-}> = ({ lines, currentTime, offsetSec, style }) => {
-    const activeLine = lines.find(l => {
-        const s = l.start + offsetSec;
-        const e = l.end + offsetSec;
-        return currentTime >= s && currentTime <= e;
-    });
-
-    if (!activeLine) return null;
-
-    const bgAlpha = style.bgOpacity / 100;
-
-    return (
-        <div
-            className={`absolute left-0 right-0 flex justify-center pointer-events-none px-4 ${style.position === 'bottom' ? 'bottom-8' : 'top-4'}`}
-        >
-            <div
-                style={{
-                    background: `rgba(0,0,0,${bgAlpha})`,
-                    color: style.color,
-                    fontSize: `${style.fontSize}px`,
-                    lineHeight: 1.4,
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    textAlign: 'center',
-                    maxWidth: '90%',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'pre-line',
-                }}
-            >
-                {activeLine.text}
-            </div>
-        </div>
-    );
-};
-
-// ─── Video Player ─────────────────────────────────────────────────────────────
-
-const VideoPlayer: React.FC<{
-    videoUrl: string;
-    lines: SubLine[];
-    offsetSec: number;
-    subStyle: SubStyle;
-    onTimeUpdate: (t: number) => void;
-    onDuration: (d: number) => void;
-    currentTime: number;
-    videoRef: React.RefObject<HTMLVideoElement>;
-}> = ({ videoUrl, lines, offsetSec, subStyle, onTimeUpdate, onDuration, currentTime, videoRef }) => {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [duration, setDuration] = useState(0);
-
-    const togglePlay = () => {
-        const v = videoRef.current;
-        if (!v) return;
-        if (v.paused) { v.play(); setIsPlaying(true); }
-        else { v.pause(); setIsPlaying(false); }
-    };
-
-    const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const v = videoRef.current;
-        if (!v) return;
-        v.currentTime = Number(e.target.value);
-    };
-
-    return (
-        <div className="relative rounded-xl overflow-hidden bg-black group">
-            <video
-                ref={videoRef}
-                src={videoUrl}
-                className="w-full max-h-[400px] block"
-                onTimeUpdate={() => onTimeUpdate(videoRef.current?.currentTime ?? 0)}
-                onLoadedMetadata={() => {
-                    const d = videoRef.current?.duration ?? 0;
-                    setDuration(d);
-                    onDuration(d);
-                }}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onEnded={() => setIsPlaying(false)}
-            />
-            {/* Custom subtitle overlay */}
-            <SubtitleOverlay
-                lines={lines}
-                currentTime={currentTime}
-                offsetSec={offsetSec}
-                style={subStyle}
-            />
-
-            {/* Controls overlay */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <input
-                    type="range" min={0} max={duration} step={0.1} value={currentTime}
-                    onChange={seek}
-                    className="w-full mb-2"
-                />
-                <div className="flex items-center justify-between">
-                    <button onClick={togglePlay} className="text-white text-lg w-8 h-8 flex items-center justify-center hover:text-accent-primary transition-colors">
-                        {isPlaying ? '⏸' : '▶️'}
-                    </button>
-                    <span className="text-white text-xs font-mono">
-                        {formatTime(currentTime)} / {formatTime(duration)}
-                    </span>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// ─── Drop Zone ────────────────────────────────────────────────────────────────
-
-const DropZone: React.FC<{
-    accept: string;
-    icon: string;
-    label: string;
-    sublabel: string;
-    onFile: (f: File) => void;
-    fileName?: string;
-    color?: string;
-}> = ({ accept, icon, label, sublabel, onFile, fileName, color = 'accent-primary' }) => {
-    const [drag, setDrag] = useState(false);
-    return (
-        <div
-            onDragOver={e => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={e => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) onFile(f); }}
-            className={`relative border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200
-        ${drag ? `border-${color} bg-${color}/5 scale-[1.01]` : fileName ? 'border-accent-success/50 bg-accent-success/5' : 'border-border-primary hover:border-border-secondary'}`}
-        >
-            <input type="file" accept={accept} className="absolute inset-0 opacity-0 cursor-pointer"
-                onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
-            <div className="text-2xl mb-1">{fileName ? '✅' : icon}</div>
-            <div className="text-sm font-semibold text-text-primary truncate">
-                {fileName ? fileName : label}
-            </div>
-            <div className="text-xs text-text-tertiary mt-0.5">{fileName ? 'Click to replace' : sublabel}</div>
-        </div>
-    );
-};
+import { SubLine, SubStyle } from './types/subtitle';
+import { parseSrt, linesToVtt, linesToSrt, downloadText, formatTime, secToSrtTime, hmsToSec } from './utils/subtitleUtils';
+import DropZone from './components/DropZone';
+import VideoPlayer from './components/VideoPlayer';
+import SubtitleOverlay from './components/SubtitleOverlay';
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -255,6 +28,9 @@ const SubtitlePreviewPage: React.FC = () => {
         bgOpacity: 70,
         position: 'bottom',
     });
+    const [exportProgress, setExportProgress] = useState(0);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // Load video
@@ -296,6 +72,11 @@ const SubtitlePreviewPage: React.FC = () => {
         setLines(prev => prev.map(l => l.id === id ? { ...l, text } : l));
     };
 
+    const updateLineTime = (id: number, type: 'start' | 'end', hmsString: string) => {
+        const parsedSec = hmsToSec(hmsString) - offsetSec; // subtract offset back out
+        setLines(prev => prev.map(l => l.id === id ? { ...l, [type]: parsedSec } : l));
+    };
+
     const exportSrt = () => {
         if (!srtFile) return;
         const content = linesToSrt(lines, offsetSec);
@@ -308,6 +89,80 @@ const SubtitlePreviewPage: React.FC = () => {
         const content = linesToVtt(lines, offsetSec);
         const baseName = srtFile.name.replace(/\.[^.]+$/, '');
         downloadText(content, `${baseName}.vtt`);
+    };
+
+    const exportVideo = async () => {
+        if (!videoFile || !srtFile) return;
+        setIsExporting(true);
+        setExportProgress(0);
+        setExportError(null);
+
+        try {
+            const srtContent = linesToSrt(lines, offsetSec);
+            const srtBlob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+
+            const formData = new FormData();
+            formData.append('video_file', videoFile);
+            formData.append('srt_file', srtBlob, 'sub.srt');
+            formData.append('font_size', subStyle.fontSize.toString());
+            formData.append('color', subStyle.color);
+            formData.append('position', subStyle.position);
+            formData.append('bg_opacity', subStyle.bgOpacity.toString());
+
+            // 1. Start export job
+            const startRes = await fetch('http://localhost:8000/api/video/export/start', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!startRes.ok) {
+                const text = await startRes.text();
+                throw new Error(text || 'Failed to start export');
+            }
+
+            const { job_id } = await startRes.json();
+
+            // 2. Poll for status
+            while (true) {
+                await new Promise(r => setTimeout(r, 1000)); // poll every 1s
+
+                const statusRes = await fetch(`http://localhost:8000/api/video/export/status/${job_id}`);
+                if (!statusRes.ok) throw new Error('Failed to get status');
+
+                const statusData = await statusRes.json();
+
+                if (statusData.status === 'error') {
+                    throw new Error(statusData.error || 'Export failed during processing');
+                }
+
+                setExportProgress(statusData.progress || 0);
+
+                if (statusData.status === 'done') {
+                    break;
+                }
+            }
+
+            // 3. Download the result
+            const downloadRes = await fetch(`http://localhost:8000/api/video/export/download/${job_id}`);
+            if (!downloadRes.ok) throw new Error('Failed to download final video');
+
+            const blob = await downloadRes.blob();
+            const url = URL.createObjectURL(blob);
+
+            const baseName = videoFile.name.replace(/\.[^.]+$/, '');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${baseName}_subbed.mp4`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+        } catch (err: any) {
+            console.error('Export error:', err);
+            setExportError(err.message);
+        } finally {
+            setIsExporting(false);
+            setTimeout(() => setExportProgress(0), 3000);
+        }
     };
 
     return (
@@ -394,8 +249,8 @@ const SubtitlePreviewPage: React.FC = () => {
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-semibold text-text-primary">⏱ Subtitle Timing Offset</h3>
                                         <span className={`text-sm font-bold font-mono px-3 py-1 rounded-lg ${offsetSec > 0 ? 'bg-accent-success/10 text-accent-success' :
-                                                offsetSec < 0 ? 'bg-accent-error/10 text-accent-error' :
-                                                    'bg-surface-primary text-text-secondary'
+                                            offsetSec < 0 ? 'bg-accent-error/10 text-accent-error' :
+                                                'bg-surface-primary text-text-secondary'
                                             }`}>
                                             {offsetSec > 0 ? '+' : ''}{offsetSec.toFixed(1)}s
                                         </span>
@@ -414,14 +269,31 @@ const SubtitlePreviewPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Current subtitle display */}
+                                {/* Current subtitle display - Now editable inline */}
                                 <div className={`p-4 rounded-xl border text-center transition-all duration-200 min-h-[64px] flex items-center justify-center
-                  ${activeLine ? 'border-accent-primary/30 bg-accent-primary/5' : 'border-border-primary'}`}>
+                  ${activeLine ? 'border-accent-primary/50 bg-accent-primary/10' : 'border-border-primary'}`}>
                                     {activeLine ? (
-                                        <div>
-                                            <div className="text-text-primary font-medium">{activeLine.text}</div>
-                                            <div className="text-xs text-text-tertiary mt-1">
-                                                {secToSrtTime(activeLine.start + offsetSec).split(',')[0]} → {secToSrtTime(activeLine.end + offsetSec).split(',')[0]}
+                                        <div className="w-full flex flex-col items-center">
+                                            <textarea
+                                                className="w-full text-center text-text-primary font-medium bg-transparent border-0 outline-none resize-none"
+                                                rows={2}
+                                                value={activeLine.text}
+                                                onChange={(e) => updateLineText(activeLine.id, e.target.value)}
+                                            />
+                                            <div className="flex items-center justify-center gap-1 mt-1 text-xs text-text-tertiary">
+                                                <input
+                                                    type="text"
+                                                    value={secToSrtTime(activeLine.start + offsetSec).split(',')[0]}
+                                                    onChange={e => updateLineTime(activeLine.id, 'start', e.target.value)}
+                                                    className="w-32 bg-transparent border border-transparent hover:border-border-primary rounded px-1 text-center font-mono outline-none focus:border-accent-primary focus:bg-surface-primary"
+                                                />
+                                                <span className="opacity-50">→</span>
+                                                <input
+                                                    type="text"
+                                                    value={secToSrtTime(activeLine.end + offsetSec).split(',')[0]}
+                                                    onChange={e => updateLineTime(activeLine.id, 'end', e.target.value)}
+                                                    className="w-32 bg-transparent border border-transparent hover:border-border-primary rounded px-1 text-center font-mono outline-none focus:border-accent-primary focus:bg-surface-primary"
+                                                />
                                             </div>
                                         </div>
                                     ) : (
@@ -494,10 +366,25 @@ const SubtitlePreviewPage: React.FC = () => {
                           ${isActive ? 'border-accent-primary bg-accent-primary/5' : isEditing ? 'border-accent-secondary/50' : 'border-border-primary hover:border-border-secondary'}`}
                                                 onClick={() => jumpTo(l)}
                                             >
-                                                {/* Timestamp */}
-                                                <div className="text-xs text-text-tertiary font-mono shrink-0 pt-0.5 leading-tight">
-                                                    <div>{secToSrtTime(l.start + offsetSec).split(',')[0]}</div>
-                                                    <div className="opacity-50">→ {secToSrtTime(l.end + offsetSec).split(',')[0]}</div>
+                                                {/* Editable Timestamps */}
+                                                <div className="flex flex-col gap-0.5 shrink-0 pt-0.5">
+                                                    <input
+                                                        type="text"
+                                                        value={secToSrtTime(l.start + offsetSec).split(',')[0]}
+                                                        onClick={e => { e.stopPropagation(); setEditingId(l.id); }}
+                                                        onChange={e => updateLineTime(l.id, 'start', e.target.value)}
+                                                        className="w-[4.5rem] bg-transparent border border-transparent hover:border-border-primary rounded px-1 text-center text-xs text-text-tertiary font-mono outline-none focus:border-accent-primary focus:bg-surface-primary"
+                                                    />
+                                                    <div className="flex bg-transparent text-xs text-text-tertiary font-mono px-1 items-center gap-1">
+                                                        <span className="opacity-50">→</span>
+                                                        <input
+                                                            type="text"
+                                                            value={secToSrtTime(l.end + offsetSec).split(',')[0]}
+                                                            onClick={e => { e.stopPropagation(); setEditingId(l.id); }}
+                                                            onChange={e => updateLineTime(l.id, 'end', e.target.value)}
+                                                            className="flex-1 w-full bg-transparent border border-transparent hover:border-border-primary rounded px-1 text-center outline-none focus:border-accent-primary focus:bg-surface-primary"
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 {/* Editable text */}
@@ -601,20 +488,53 @@ const SubtitlePreviewPage: React.FC = () => {
                         )}
 
                         {/* Export bar */}
-                        <div className="flex gap-3 pt-2 border-t border-border-primary">
-                            <button
-                                onClick={exportSrt}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary text-white rounded-xl font-semibold hover:bg-accent-primary-dark transition-colors text-sm"
-                            >
-                                📥 Export Adjusted SRT
-                            </button>
-                            <button
-                                onClick={exportVtt}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-surface-secondary text-text-primary rounded-xl font-semibold hover:bg-surface-tertiary transition-colors text-sm"
-                            >
-                                📄 Export as VTT
-                            </button>
+                        <div className="space-y-3 pt-2 border-t border-border-primary">
+
+                            {/* Export Progress Bar */}
+                            {isExporting && (
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-xs font-semibold text-text-secondary">
+                                        <span>Exporting Video...</span>
+                                        <span>{exportProgress.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-surface-secondary rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-accent-success transition-all duration-300"
+                                            style={{ width: `${exportProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 flex-col md:flex-row">
+                                <button
+                                    onClick={exportVideo}
+                                    disabled={isExporting}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-success text-white rounded-xl font-semibold hover:bg-accent-success/90 transition-colors text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {isExporting ? '⏳ Processing...' : '🎬 Export Video + Subs'}
+                                </button>
+                                <button
+                                    onClick={exportSrt}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary text-white rounded-xl font-semibold hover:bg-accent-primary-dark transition-colors text-sm"
+                                >
+                                    📥 Export Adjusted SRT
+                                </button>
+                                <button
+                                    onClick={exportVtt}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-surface-secondary text-text-primary rounded-xl font-semibold hover:bg-surface-tertiary transition-colors text-sm"
+                                >
+                                    📄 Export as VTT
+                                </button>
+                            </div>
                         </div>
+
+                        {exportError && (
+                            <div className="text-sm text-accent-error p-3 bg-accent-error/10 rounded-xl mt-2 flex justify-between items-center">
+                                <span>❌ Error: {exportError}</span>
+                                <button onClick={() => setExportError(null)} className="text-xs hover:underline">Dismiss</button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
