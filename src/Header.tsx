@@ -2,18 +2,11 @@
 // React component for the main navigation header
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
 
 const Header: React.FC = () => {
-  const location = useLocation();
 
-  const navLinks = [
-    { path: '/', label: 'Dashboard' },
-    { path: '/upload', label: 'Upload' },
-    { path: '/editor', label: 'Editor' },
-    { path: '/preview', label: 'Preview' },
-  ];
 
   return (
     <header className="bg-surface-primary border-b border-border-primary px-4 md:px-6 py-3 sticky top-0 z-50">
@@ -28,25 +21,7 @@ const Header: React.FC = () => {
             <span>AI Video Editor</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`
-                  px-3 py-2 rounded-lg transition-colors
-                  ${
-                    location.pathname === link.path
-                      ? 'bg-accent-primary text-white'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'
-                  }
-                `}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+
         </div>
 
         {/* Right Side */}
@@ -85,25 +60,7 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <nav className="md:hidden mt-3 flex flex-wrap gap-2">
-        {navLinks.map((link) => (
-          <Link
-            key={link.path}
-            to={link.path}
-            className={`
-              px-3 py-1.5 rounded-lg text-sm transition-colors
-              ${
-                location.pathname === link.path
-                  ? 'bg-accent-primary text-white'
-                  : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
-              }
-            `}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
+
     </header>
   );
 };

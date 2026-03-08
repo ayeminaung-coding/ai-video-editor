@@ -74,11 +74,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
       <aside
         className={`
           fixed md:sticky top-0 left-0 h-screen w-64 bg-surface-primary border-r border-border-primary
-          transform transition-transform duration-200 z-50
+          transform transition-transform duration-200 z-50 flex flex-col
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-4 border-b border-border-primary">
+        <div className="p-4 border-b border-border-primary flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-text-primary">Quick Actions</h2>
             <button
@@ -90,77 +90,59 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="p-4 border-b border-border-primary">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">Navigation</h3>
-          <div className="space-y-1">
-            {quickActions.map((action) => (
-              <Link
-                key={action.path}
-                to={action.path}
-                onClick={() => setIsOpen(false)}
-                className={`
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 border-b border-border-primary">
+            <h3 className="text-sm font-medium text-text-secondary mb-3">Navigation</h3>
+            <div className="space-y-1">
+              {quickActions.map((action) => (
+                <Link
+                  key={action.path}
+                  to={action.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`
                   flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                  ${
-                    location.pathname === action.path
+                  ${location.pathname === action.path
                       ? 'bg-accent-primary/10 text-accent-primary'
                       : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
-                  }
+                    }
                 `}
-              >
-                <span className="text-lg">{action.icon}</span>
-                <span>{action.label}</span>
-              </Link>
-            ))}
+                >
+                  <span className="text-lg">{action.icon}</span>
+                  <span>{action.label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Tools (Creator-focused) */}
-        <div className="p-4 border-b border-border-primary">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">Creator Tools</h3>
-          <div className="space-y-1">
-            {tools.map((tool) => (
-              <Link
-                key={tool.path}
-                to={tool.path}
-                onClick={() => setIsOpen(false)}
-                className={`
+          {/* Tools (Creator-focused) */}
+          <div className="p-4 border-b border-border-primary">
+            <h3 className="text-sm font-medium text-text-secondary mb-3">Creator Tools</h3>
+            <div className="space-y-1">
+              {tools.map((tool) => (
+                <Link
+                  key={tool.path}
+                  to={tool.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`
                   flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                  ${
-                    location.pathname === tool.path
+                  ${location.pathname === tool.path
                       ? 'bg-accent-primary/10 text-accent-primary'
                       : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
-                  }
+                    }
                 `}
-              >
-                <span className="text-lg">{tool.icon}</span>
-                <span>{tool.label}</span>
-              </Link>
-            ))}
+                >
+                  <span className="text-lg">{tool.icon}</span>
+                  <span>{tool.label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Info */}
-        <div className="p-4">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">Info</h3>
-          <div className="space-y-2 text-sm text-text-secondary">
-            <div className="flex items-center gap-2">
-              <span>📱</span>
-              <span>Mobile-friendly</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>🎨</span>
-              <span>Dark mode support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>🚀</span>
-              <span>Free to use</span>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border-primary">
+        <div className="flex-shrink-0 p-4 border-t border-border-primary">
           <div className="text-xs text-text-tertiary text-center">
             AI Video Editor v1.0.0
           </div>
