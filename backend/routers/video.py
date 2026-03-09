@@ -302,10 +302,10 @@ async def start_export_video(
     bg_opacity: int = Form(70),
     # ── Blur rectangle params ──────────────────────────────────────────────────
     blur_rect_enabled: str = Form("false"),       # "true" | "false"
-    blur_rect_x_pct: float = Form(16.0),
-    blur_rect_y_pct: float = Form(82.0),
-    blur_rect_width_pct: float = Form(66.0),
-    blur_rect_height_pct: float = Form(13.0),     # height % of video height
+    blur_rect_x_pct: float = Form(19.0),
+    blur_rect_y_pct: float = Form(85.0),
+    blur_rect_width_pct: float = Form(60.0),
+    blur_rect_height_pct: float = Form(11.0),     # height % of video height
     blur_rect_opacity: int = Form(9),             # 0–100
     blur_rect_blur: int = Form(4),                # blur radius px 0–30
     blur_rect_color: str = Form("#ffffff"),       # hex fill color
