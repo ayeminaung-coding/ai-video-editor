@@ -23,7 +23,84 @@ def get_export_job(job_id: str):
 def pop_export_job(job_id: str):
     return export_jobs.pop(job_id, None)
 
-def run_export_task(job_id: str, tmpdir: str, video_path: str, srt_path: str, out_path: str, font_size: int, color: str, position: str, bg_opacity: int, font_name: str, font_dir_param: str | None):
+
+def _hex_to_ffmpeg_drawbox_color(hex_color: str, opacity: int) -> str:
+    """Convert #RRGGBB + opacity(0-100) → FFmpeg drawbox color string '0xRRGGBBAA'."""
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 6:
+        r, g, b = hex_color[0:2], hex_color[2:4], hex_color[4:6]
+    else:
+        r, g, b = "00", "00", "00"
+    # FFmpeg drawbox color: 0xRRGGBB@alpha  (alpha 0.0=transparent, 1.0=opaque)
+    alpha = opacity / 100.0
+    return f"0x{r}{g}{b}@{alpha:.2f}"
+
+
+def _build_blur_rect_filter(
+    blur_rect_x_pct: float,
+    blur_rect_y_pct: float,
+    blur_rect_width_pct: float,
+    blur_rect_height_pct: float,
+    blur_rect_opacity: int,
+    blur_rect_blur: int,
+    blur_rect_color: str,
+) -> str:
+    """
+    Build an FFmpeg complex-filtergraph expression for the blur rectangle.
+    Uses absolute x/y/w/h expressed as fractions of iw/ih.
+    Returns a filtergraph fragment that expects [v_in] and outputs [v_out].
+    """
+    xf = blur_rect_x_pct / 100.0
+    yf = blur_rect_y_pct / 100.0
+    wf = blur_rect_width_pct / 100.0
+    hf = blur_rect_height_pct / 100.0
+
+    x_expr = f"iw*{xf:.4f}"
+    y_expr = f"ih*{yf:.4f}"
+    w_expr = f"iw*{wf:.4f}"
+    h_expr = f"ih*{hf:.4f}"
+
+    draw_color = _hex_to_ffmpeg_drawbox_color(blur_rect_color, blur_rect_opacity)
+
+    if blur_rect_blur == 0:
+        return (
+            f"[v_in]drawbox=x={x_expr}:y={y_expr}:w={w_expr}:h={h_expr}"
+            f":color={draw_color}:t=fill[v_out]"
+        )
+    else:
+        radius = blur_rect_blur
+        frag = (
+            f"[v_in]split[orig][for_blur];"
+            f"[for_blur]crop={w_expr}:{h_expr}:{x_expr}:{y_expr},boxblur={radius}:{radius}[blurred];"
+            f"[orig][blurred]overlay={x_expr}:{y_expr}[blur_applied];"
+            f"[blur_applied]drawbox=x={x_expr}:y={y_expr}:w={w_expr}:h={h_expr}"
+            f":color={draw_color}:t=fill[v_out]"
+        )
+        return frag
+
+
+def run_export_task(
+    job_id: str,
+    tmpdir: str,
+    video_path: str,
+    srt_path: str,
+    out_path: str,
+    font_size: int,
+    color: str,
+    position: str,
+    bg_opacity: int,
+    font_name: str,
+    font_dir_param: str | None,
+    # Blur rectangle
+    blur_rect_enabled: bool = False,
+    blur_rect_x_pct: float = 16.0,
+    blur_rect_y_pct: float = 82.0,
+    blur_rect_width_pct: float = 66.0,
+    blur_rect_height_pct: float = 13.0,
+    blur_rect_opacity: int = 9,
+    blur_rect_blur: int = 4,
+    blur_rect_color: str = "#ffffff",
+):
     job = get_export_job(job_id)
     if not job: 
         return
@@ -72,23 +149,47 @@ def run_export_task(job_id: str, tmpdir: str, video_path: str, srt_path: str, ou
             margin_v=margin_v,
         )
 
-        # Use ASS renderer path instead of raw SRT for better complex-script rendering.
-        sub_filter = "ass=sub.ass"
+        # Build the ASS subtitle filter
+        ass_filter = "ass=sub.ass"
         if font_dir_param:
-            sub_filter += f":fontsdir='{font_dir_param}'"
+            ass_filter += f":fontsdir='{font_dir_param}'"
+
+        # ── Build video filter chain ──────────────────────────────────────────
+        if blur_rect_enabled:
+            # Blur rect runs first, then subtitles are burned on top.
+            blur_frag = _build_blur_rect_filter(
+                blur_rect_x_pct,
+                blur_rect_y_pct,
+                blur_rect_width_pct,
+                blur_rect_height_pct,
+                blur_rect_opacity,
+                blur_rect_blur,
+                blur_rect_color,
+            )
+            # Compose: [0:v] → blur rect filter → [v_out] → ass subtitle
+            # We inject [0:v] as input and chain to ass filter.
+            vf_chain = f"[0:v]{blur_frag};[v_out]{ass_filter}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", "input.mp4",
+                "-filter_complex", vf_chain,
+                "-c:a", "copy",
+                "output.mp4"
+            ]
+        else:
+            # Original simple path: just -vf with ass filter
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", "input.mp4",
+                "-vf", ass_filter,
+                "-c:a", "copy",
+                "output.mp4"
+            ]
         
         # First, find total duration using ffprobe
         duration_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path]
         dur_res = subprocess.run(duration_cmd, capture_output=True, text=True)
         total_duration = float(dur_res.stdout.strip()) if dur_res.stdout.strip() else 0.0
-        
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", "input.mp4",
-            "-vf", sub_filter,
-            "-c:a", "copy",
-            "output.mp4"
-        ]
         
         process = subprocess.Popen(
             cmd, cwd=tmpdir,
@@ -100,7 +201,7 @@ def run_export_task(job_id: str, tmpdir: str, video_path: str, srt_path: str, ou
         
         time_regex = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})")
         
-        # Read stderr line by line
+        # Read stderr line by line for progress tracking
         for line in process.stderr:
             match = time_regex.search(line)
             if match and total_duration > 0:

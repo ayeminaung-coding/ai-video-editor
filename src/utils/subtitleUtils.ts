@@ -1,17 +1,67 @@
 import { SubLine } from '../types/subtitle';
 
 export function parseSrt(raw: string): SubLine[] {
-    const blocks = raw.trim().split(/\r?\n\r?\n/);
+    // Strip BOM if present, normalise all line endings to \n
+    const normalised = raw
+        .replace(/^\uFEFF/, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+
+    const rows = normalised.split('\n');
+    const timecodeRe = /(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})(?:\s+.*)?$/;
+
     const lines: SubLine[] = [];
-    for (const block of blocks) {
-        const rows = block.trim().split(/\r?\n/);
-        if (rows.length < 3) continue;
-        const id = parseInt(rows[0], 10);
-        const timeParts = rows[1].match(/(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}[,\.]\d{3})/);
-        if (!timeParts) continue;
-        const text = rows.slice(2).join('\n');
-        lines.push({ id, start: srtTimeToSec(timeParts[1]), end: srtTimeToSec(timeParts[2]), text });
+    let autoId = 1;
+    let currentId: number | null = null;
+    let currentStart: number | null = null;
+    let currentEnd: number | null = null;
+    let currentText: string[] = [];
+
+    const flushCue = () => {
+        if (currentStart === null || currentEnd === null) return;
+        const text = currentText.join('\n').trim();
+        if (!text) return;
+        const id = currentId ?? autoId;
+        lines.push({ id, start: currentStart, end: currentEnd, text });
+        autoId = Math.max(autoId, id + 1);
+    };
+
+    for (const rawRow of rows) {
+        const row = rawRow.trim();
+        if (!row) {
+            flushCue();
+            currentId = null;
+            currentStart = null;
+            currentEnd = null;
+            currentText = [];
+            continue;
+        }
+
+        if (/^(WEBVTT|NOTE|STYLE|REGION)\b/i.test(row)) {
+            continue;
+        }
+
+        const timeMatch = row.match(timecodeRe);
+        if (timeMatch) {
+            flushCue();
+            currentId = null;
+            currentStart = srtTimeToSec(timeMatch[1]);
+            currentEnd = srtTimeToSec(timeMatch[2]);
+            currentText = [];
+            continue;
+        }
+
+        if (currentStart !== null && currentEnd !== null) {
+            currentText.push(rawRow.trimEnd());
+            continue;
+        }
+
+        if (/^\d+$/.test(row)) {
+            currentId = Number(row);
+        }
     }
+
+    flushCue();
     return lines;
 }
 

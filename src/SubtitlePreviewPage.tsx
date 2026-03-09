@@ -1,10 +1,10 @@
 // SubtitlePreviewPage.tsx - Video + SRT Subtitle Preview & Combination
 // Loads a local video + SRT file, converts SRT→VTT, shows subtitles on video
-// Supports timing offset, subtitle style controls, and export back to SRT
+// Supports timing offset, subtitle style controls, blur-rectangle, and export back to SRT
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
-import { SubLine, SubStyle } from './types/subtitle';
+import { SubLine, SubStyle, BlurRectStyle } from './types/subtitle';
 import { parseSrt, linesToVtt, linesToSrt, downloadText, formatTime, secToSrtTime, hmsToSec } from './utils/subtitleUtils';
 import DropZone from './components/DropZone';
 import VideoPlayer from './components/VideoPlayer';
@@ -27,6 +27,16 @@ const SubtitlePreviewPage: React.FC = () => {
         color: '#ffffff',
         bgOpacity: 70,
         position: 'bottom',
+        blurRect: {
+            enabled: false,
+            xPct: 16,
+            yPct: 82,
+            widthPct: 66,
+            heightPct: 13,
+            opacity: 9,
+            blurStrength: 4,
+            color: '#ffffff',
+        },
     });
     const [exportProgress, setExportProgress] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
@@ -41,16 +51,44 @@ const SubtitlePreviewPage: React.FC = () => {
         return () => URL.revokeObjectURL(url);
     }, [videoFile]);
 
-    // Load & parse SRT
+    // Load & parse SRT – robust encoding detection (UTF-16 LE/BE, UTF-8, Latin-1)
     useEffect(() => {
         if (!srtFile) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-            const text = e.target?.result as string;
+            const buf = e.target?.result as ArrayBuffer;
+            const bytes = new Uint8Array(buf);
+
+            let encoding = 'utf-8';
+            if (bytes[0] === 0xFF && bytes[1] === 0xFE) encoding = 'utf-16le';
+            else if (bytes[0] === 0xFE && bytes[1] === 0xFF) encoding = 'utf-16be';
+
+            let text: string;
+            try {
+                text = new TextDecoder(encoding).decode(buf);
+            } catch {
+                text = new TextDecoder('utf-8').decode(buf);
+            }
+
+            const rawRows = text.split('\n');
             const parsed = parseSrt(text);
+
+            // ── Temporary diagnostic alert ──────────────────────────────
+            alert(
+                `📋 SRT Parse Diagnostics\n\n` +
+                `File: ${srtFile.name}\n` +
+                `File size: ${srtFile.size} bytes\n` +
+                `Encoding detected: ${encoding}\n` +
+                `Raw lines after decode: ${rawRows.length}\n` +
+                `Subtitle entries parsed: ${parsed.length}\n\n` +
+                `── First 400 chars of decoded text ──\n` +
+                text.substring(0, 400)
+            );
+            // ──────────────────────────────────────────────────────────
+
             setLines(parsed);
         };
-        reader.readAsText(srtFile, 'utf-8');
+        reader.readAsArrayBuffer(srtFile);
     }, [srtFile]);
 
     const isReady = videoUrl && lines.length > 0;
@@ -73,7 +111,7 @@ const SubtitlePreviewPage: React.FC = () => {
     };
 
     const updateLineTime = (id: number, type: 'start' | 'end', hmsString: string) => {
-        const parsedSec = hmsToSec(hmsString) - offsetSec; // subtract offset back out
+        const parsedSec = hmsToSec(hmsString) - offsetSec;
         setLines(prev => prev.map(l => l.id === id ? { ...l, [type]: parsedSec } : l));
     };
 
@@ -108,6 +146,16 @@ const SubtitlePreviewPage: React.FC = () => {
             formData.append('color', subStyle.color);
             formData.append('position', subStyle.position);
             formData.append('bg_opacity', subStyle.bgOpacity.toString());
+            // Blur rectangle params
+            const br = subStyle.blurRect;
+            formData.append('blur_rect_enabled', br.enabled ? 'true' : 'false');
+            formData.append('blur_rect_x_pct', br.xPct.toString());
+            formData.append('blur_rect_y_pct', br.yPct.toString());
+            formData.append('blur_rect_width_pct', br.widthPct.toString());
+            formData.append('blur_rect_height_pct', br.heightPct.toString());
+            formData.append('blur_rect_opacity', br.opacity.toString());
+            formData.append('blur_rect_blur', br.blurStrength.toString());
+            formData.append('blur_rect_color', br.color);
 
             // 1. Start export job
             const startRes = await fetch('http://localhost:8000/api/video/export/start', {
@@ -124,7 +172,7 @@ const SubtitlePreviewPage: React.FC = () => {
 
             // 2. Poll for status
             while (true) {
-                await new Promise(r => setTimeout(r, 1000)); // poll every 1s
+                await new Promise(r => setTimeout(r, 1000));
 
                 const statusRes = await fetch(`http://localhost:8000/api/video/export/status/${job_id}`);
                 if (!statusRes.ok) throw new Error('Failed to get status');
@@ -269,7 +317,7 @@ const SubtitlePreviewPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Current subtitle display - Now editable inline */}
+                                {/* Current subtitle display - editable inline */}
                                 <div className={`p-4 rounded-xl border text-center transition-all duration-200 min-h-[64px] flex items-center justify-center
                   ${activeLine ? 'border-accent-primary/50 bg-accent-primary/10' : 'border-border-primary'}`}>
                                     {activeLine ? (
@@ -411,7 +459,10 @@ const SubtitlePreviewPage: React.FC = () => {
                         {/* ── STYLE TAB ── */}
                         {activeTab === 'style' && (
                             <div className="space-y-4 animate-fade-in">
+
+                                {/* ── Subtitle Style ── */}
                                 <div className="bg-surface-secondary rounded-xl p-4 space-y-5">
+                                    <h3 className="text-sm font-semibold text-text-primary">💬 Subtitle Style</h3>
 
                                     {/* Font size */}
                                     <div>
@@ -472,7 +523,176 @@ const SubtitlePreviewPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Live preview of style */}
+                                {/* ── Blur Rectangle Section ── */}
+                                <div className="bg-surface-secondary rounded-xl p-4 space-y-4">
+                                    {/* Header + toggle */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-text-primary">🟫 Blur Rectangle</h3>
+                                            <p className="text-xs text-text-tertiary mt-0.5">Cover original hardcoded subtitles in the video</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setSubStyle(s => ({ ...s, blurRect: { ...s.blurRect, enabled: !s.blurRect.enabled } }))}
+                                            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${subStyle.blurRect.enabled ? 'bg-accent-primary' : 'bg-surface-primary border border-border-primary'
+                                                }`}
+                                            aria-label="Toggle blur rectangle"
+                                        >
+                                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${subStyle.blurRect.enabled ? 'translate-x-6' : 'translate-x-0'
+                                                }`} />
+                                        </button>
+                                    </div>
+
+                                    {subStyle.blurRect.enabled && (
+                                        <div className="space-y-4">
+
+                                            {/* ── Draggable Position Canvas ── */}
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Position &amp; Size</p>
+                                                    <span className="text-xs text-text-tertiary font-mono">
+                                                        x:{Math.round(subStyle.blurRect.xPct)}% y:{Math.round(subStyle.blurRect.yPct)}%
+                                                        &nbsp;·&nbsp;
+                                                        w:{Math.round(subStyle.blurRect.widthPct)}% h:{Math.round(subStyle.blurRect.heightPct)}%
+                                                    </span>
+                                                </div>
+                                                {/* Canvas: 16:9 aspect ratio box; the user drags the rect inside it */}
+                                                <div
+                                                    id="blur-rect-canvas"
+                                                    className="relative rounded-lg overflow-hidden bg-gradient-to-b from-slate-800 to-slate-900 border border-border-primary select-none"
+                                                    style={{ aspectRatio: '16/9', cursor: 'crosshair' }}
+                                                    onMouseDown={(downEvt) => {
+                                                        const canvas = downEvt.currentTarget as HTMLDivElement;
+                                                        const rect = canvas.getBoundingClientRect();
+                                                        const br = subStyle.blurRect;
+
+                                                        // Find if user clicked inside the rect handle or on canvas
+                                                        const clickXPct = ((downEvt.clientX - rect.left) / rect.width) * 100;
+                                                        const clickYPct = ((downEvt.clientY - rect.top) / rect.height) * 100;
+
+                                                        const inRect =
+                                                            clickXPct >= br.xPct && clickXPct <= br.xPct + br.widthPct &&
+                                                            clickYPct >= br.yPct && clickYPct <= br.yPct + br.heightPct;
+
+                                                        // Determine if click is near the resize handle (bottom-right corner ±8%)
+                                                        const nearResizeX = Math.abs(clickXPct - (br.xPct + br.widthPct)) < 8;
+                                                        const nearResizeY = Math.abs(clickYPct - (br.yPct + br.heightPct)) < 8;
+                                                        const isResize = inRect && nearResizeX && nearResizeY;
+
+                                                        let startX = downEvt.clientX;
+                                                        let startY = downEvt.clientY;
+
+                                                        const onMove = (moveEvt: MouseEvent) => {
+                                                            const dx = ((moveEvt.clientX - startX) / rect.width) * 100;
+                                                            const dy = ((moveEvt.clientY - startY) / rect.height) * 100;
+                                                            startX = moveEvt.clientX;
+                                                            startY = moveEvt.clientY;
+
+                                                            setSubStyle(s => {
+                                                                const b = s.blurRect;
+                                                                if (isResize) {
+                                                                    const newW = Math.min(100 - b.xPct, Math.max(5, b.widthPct + dx));
+                                                                    const newH = Math.min(100 - b.yPct, Math.max(2, b.heightPct + dy));
+                                                                    return { ...s, blurRect: { ...b, widthPct: Math.round(newW * 10) / 10, heightPct: Math.round(newH * 10) / 10 } };
+                                                                } else {
+                                                                    const newX = Math.min(100 - b.widthPct, Math.max(0, b.xPct + dx));
+                                                                    const newY = Math.min(100 - b.heightPct, Math.max(0, b.yPct + dy));
+                                                                    return { ...s, blurRect: { ...b, xPct: Math.round(newX * 10) / 10, yPct: Math.round(newY * 10) / 10 } };
+                                                                }
+                                                            });
+                                                        };
+
+                                                        const onUp = () => {
+                                                            window.removeEventListener('mousemove', onMove);
+                                                            window.removeEventListener('mouseup', onUp);
+                                                        };
+
+                                                        window.addEventListener('mousemove', onMove);
+                                                        window.addEventListener('mouseup', onUp);
+                                                        downEvt.preventDefault();
+                                                    }}
+                                                >
+                                                    {/* Grid lines hint */}
+                                                    <div className="absolute inset-0 opacity-10" style={{
+                                                        backgroundImage: 'linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)',
+                                                        backgroundSize: '25% 25%'
+                                                    }} />
+
+                                                    {/* The draggable blur rect */}
+                                                    <div
+                                                        style={{
+                                                            position: 'absolute',
+                                                            left: `${subStyle.blurRect.xPct}%`,
+                                                            top: `${subStyle.blurRect.yPct}%`,
+                                                            width: `${subStyle.blurRect.widthPct}%`,
+                                                            height: `${subStyle.blurRect.heightPct}%`,
+                                                            background: (() => {
+                                                                const hex = subStyle.blurRect.color.replace('#', '');
+                                                                const rr = parseInt(hex.substring(0, 2), 16) || 0;
+                                                                const gg = parseInt(hex.substring(2, 4), 16) || 0;
+                                                                const bb2 = parseInt(hex.substring(4, 6), 16) || 0;
+                                                                return `rgba(${rr},${gg},${bb2},${subStyle.blurRect.opacity / 100})`;
+                                                            })(),
+                                                            backdropFilter: subStyle.blurRect.blurStrength > 0 ? `blur(${subStyle.blurRect.blurStrength}px)` : undefined,
+                                                            border: '1.5px dashed rgba(255,255,255,0.7)',
+                                                            cursor: 'move',
+                                                            boxSizing: 'border-box',
+                                                            minWidth: '12px',
+                                                            minHeight: '6px',
+                                                        }}
+                                                    >
+                                                        {/* Resize handle (bottom-right) */}
+                                                        <div style={{
+                                                            position: 'absolute', right: -4, bottom: -4,
+                                                            width: 10, height: 10,
+                                                            background: 'white',
+                                                            border: '1.5px solid rgba(0,0,0,0.5)',
+                                                            borderRadius: 2,
+                                                            cursor: 'se-resize',
+                                                        }} />
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-text-tertiary mt-1">Drag to reposition · Drag corner ◽ to resize</p>
+                                            </div>
+
+                                            {/* ── Fill color + opacity row ── */}
+                                            <div className="flex items-start gap-4">
+                                                <div className="flex items-center gap-2 pt-1">
+                                                    <label className="text-sm font-semibold text-text-primary whitespace-nowrap">Fill Color</label>
+                                                    <input type="color" value={subStyle.blurRect.color}
+                                                        onChange={e => setSubStyle(s => ({ ...s, blurRect: { ...s.blurRect, color: e.target.value } }))}
+                                                        className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
+                                                        title="Blur rect fill color" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between mb-1">
+                                                        <label className="text-xs font-medium text-text-secondary">Opacity</label>
+                                                        <span className="text-xs text-text-secondary font-mono">{subStyle.blurRect.opacity}%</span>
+                                                    </div>
+                                                    <input type="range" min={0} max={100} value={subStyle.blurRect.opacity}
+                                                        onChange={e => setSubStyle(s => ({ ...s, blurRect: { ...s.blurRect, opacity: Number(e.target.value) } }))}
+                                                        className="w-full" />
+                                                </div>
+                                            </div>
+
+                                            {/* ── Blur strength ── */}
+                                            <div>
+                                                <div className="flex justify-between mb-2">
+                                                    <label className="text-sm font-semibold text-text-primary">Blur Strength</label>
+                                                    <span className="text-sm text-text-secondary font-mono">
+                                                        {subStyle.blurRect.blurStrength === 0 ? 'Off' : `${subStyle.blurRect.blurStrength}px`}
+                                                    </span>
+                                                </div>
+                                                <input type="range" min={0} max={30} value={subStyle.blurRect.blurStrength}
+                                                    onChange={e => setSubStyle(s => ({ ...s, blurRect: { ...s.blurRect, blurStrength: Number(e.target.value) } }))}
+                                                    className="w-full" />
+                                                <p className="text-xs text-text-tertiary mt-1">0 = solid fill · higher = frosted glass blur</p>
+                                            </div>
+
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Live preview of subtitle style */}
                                 <div className="relative rounded-xl overflow-hidden bg-black" style={{ height: '120px' }}>
                                     <div className="absolute inset-0 flex items-center justify-center text-surface-tertiary text-sm">
                                         Video preview area
