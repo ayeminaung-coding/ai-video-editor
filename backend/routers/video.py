@@ -337,9 +337,9 @@ async def start_export_video(
         os.makedirs(font_dir, exist_ok=True)
         repo_root = Path(__file__).resolve().parent.parent.parent
         font_candidates = [
-            ("Pyidaungsu.ttf", "Pyidaungsu"),
             ("Padauk-Regular.ttf", "Padauk"),
             ("Padauk-Bold.ttf", "Padauk"),
+            ("Pyidaungsu.ttf", "Pyidaungsu"),
             ("Zawgyi-One.ttf", "Zawgyi-One"),
         ]
         copied_fonts = 0

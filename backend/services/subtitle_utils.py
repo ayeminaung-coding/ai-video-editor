@@ -109,7 +109,7 @@ def write_ass_from_srt(
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
         f"Style: Default,{font_name},{font_size},{primary_colour},&H000000FF,&H00000000,{back_colour},"
-        f"0,0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},24,24,{margin_v},1\n\n"
+        f"0,0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},24,24,{margin_v},0\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
