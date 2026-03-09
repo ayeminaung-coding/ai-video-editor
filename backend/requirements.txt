@@ -1,0 +1,36 @@
+# Backend dependencies - Pinned versions for reproducibility
+# Updated: 2026-03-09
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# Configuration & validation
+python-dotenv==1.0.1
+pydantic-settings==2.7.0
+pydantic==2.10.4
+
+# Google Cloud / Vertex AI
+google-cloud-aiplatform==1.74.0
+google-generativeai==0.8.3
+google-api-core==2.24.0
+
+# Video processing
+ffmpeg-python==0.2.0
+opencv-python-headless==4.10.0.84
+
+# Async file I/O
+aiofiles==24.1.0
+
+# OCR - PaddleOCR (compatible versions)
+paddlepaddle==2.6.2
+paddleocr==2.8.1
+craft-text-detector==0.0.5
+
+# Additional utilities
+numpy==1.26.4
+Pillow==11.0.0
+
+# Logging & monitoring
+python-json-logger==2.0.7
