@@ -1,16 +1,17 @@
 import { SubLine } from '../types/subtitle';
 
 export function parseSrt(raw: string): SubLine[] {
-    // Strip BOM if present, normalise all line endings to \n
     const normalised = raw
         .replace(/^\uFEFF/, '')
+        .replace(/\u0000/g, '')
+        .replace(/[\u200B-\u200F\u202A-\u202E]/g, '')
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n');
 
     const rows = normalised.split('\n');
-    const timecodeRe = /(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})(?:\s+.*)?$/;
+    const timecodeRe = /(\d{1,2}:\d{2}:\d{2}(?:[,.]\d{1,3})?|\d{1,2}:\d{2}(?:[,.]\d{1,3})?)\s*-->\s*(\d{1,2}:\d{2}:\d{2}(?:[,.]\d{1,3})?|\d{1,2}:\d{2}(?:[,.]\d{1,3})?)(?:\s+.*)?$/;
 
-    const lines: SubLine[] = [];
+    const parsed: SubLine[] = [];
     let autoId = 1;
     let currentId: number | null = null;
     let currentStart: number | null = null;
@@ -22,12 +23,14 @@ export function parseSrt(raw: string): SubLine[] {
         const text = currentText.join('\n').trim();
         if (!text) return;
         const id = currentId ?? autoId;
-        lines.push({ id, start: currentStart, end: currentEnd, text });
+        parsed.push({ id, start: currentStart, end: currentEnd, text });
         autoId = Math.max(autoId, id + 1);
     };
 
     for (const rawRow of rows) {
-        const row = rawRow.trim();
+        const cleanedRow = rawRow.replace(/\u0000/g, '');
+        const row = cleanedRow.trim();
+
         if (!row) {
             flushCue();
             currentId = null;
@@ -52,7 +55,7 @@ export function parseSrt(raw: string): SubLine[] {
         }
 
         if (currentStart !== null && currentEnd !== null) {
-            currentText.push(rawRow.trimEnd());
+            currentText.push(cleanedRow.trimEnd());
             continue;
         }
 
@@ -62,13 +65,68 @@ export function parseSrt(raw: string): SubLine[] {
     }
 
     flushCue();
-    return lines;
+
+    if (parsed.length > 0) {
+        return parsed;
+    }
+
+    const blockRe = /(?:^|\n)(?:\d+\n)?\s*((?:\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})(?:[,.]\d{1,3})?\s*-->\s*(?:\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})(?:[,.]\d{1,3})?(?:[^\n]*)?)\n([\s\S]*?)(?=\n(?:\d+\n)?\s*(?:\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})(?:[,.]\d{1,3})?\s*-->\s*(?:\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})(?:[,.]\d{1,3})?|$)/g;
+    const regexParsed: SubLine[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = blockRe.exec(normalised)) !== null) {
+        const timeMatch = match[1].match(timecodeRe);
+        const text = match[2].trim();
+        if (!timeMatch || !text) continue;
+
+        regexParsed.push({
+            id: regexParsed.length + 1,
+            start: srtTimeToSec(timeMatch[1]),
+            end: srtTimeToSec(timeMatch[2]),
+            text,
+        });
+    }
+
+    return regexParsed;
+}
+
+export function parsePlainTextSubtitles(raw: string): SubLine[] {
+    const rows = raw
+        .replace(/^\uFEFF/, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map(row => row.trim())
+        .filter(Boolean);
+
+    return rows.map((text, index) => {
+        const start = index * 3;
+        return {
+            id: index + 1,
+            start,
+            end: start + 2.5,
+            text,
+        };
+    });
 }
 
 export function srtTimeToSec(t: string): number {
-    const [hms, ms] = t.replace(',', '.').split('.');
-    const [h, m, s] = hms.split(':').map(Number);
-    return h * 3600 + m * 60 + s + Number('0.' + ms);
+    const cleaned = t.trim().replace(',', '.');
+    const [hms, rawMs = '0'] = cleaned.split('.');
+    const parts = hms.split(':').map(Number);
+    const ms = Number(`0.${rawMs.padEnd(3, '0').slice(0, 3)}`);
+
+    if (parts.length === 3) {
+        const [h, m, s] = parts;
+        return h * 3600 + m * 60 + s + ms;
+    }
+
+    if (parts.length === 2) {
+        const [m, s] = parts;
+        return m * 60 + s + ms;
+    }
+
+    return Number(cleaned) || 0;
 }
 
 export function hmsToSec(hms: string): number {

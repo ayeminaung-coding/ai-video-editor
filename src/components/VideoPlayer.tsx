@@ -61,7 +61,7 @@ const VideoPlayer: React.FC<{
                     className="w-full mb-2"
                 />
                 <div className="flex items-center justify-between">
-                    <button onClick={togglePlay} className="text-white text-lg w-8 h-8 flex items-center justify-center hover:text-accent-primary transition-colors">
+                    <button onClick={togglePlay} className="text-white text-2xl w-10 h-10 flex items-center justify-center hover:text-accent-primary transition-colors">
                         {isPlaying ? '⏸' : '▶️'}
                     </button>
                     <span className="text-white text-xs font-mono">

@@ -68,11 +68,15 @@ def _build_blur_rect_filter(
             f":color={draw_color}:t=fill[v_out]"
         )
     else:
+        # overlay variables: W/H = main input W/H, not iw/ih
+        overlay_x_expr = f"W*{xf:.4f}"
+        overlay_y_expr = f"H*{yf:.4f}"
+
         radius = blur_rect_blur
         frag = (
             f"[v_in]split[orig][for_blur];"
             f"[for_blur]crop={w_expr}:{h_expr}:{x_expr}:{y_expr},boxblur={radius}:{radius}[blurred];"
-            f"[orig][blurred]overlay={x_expr}:{y_expr}[blur_applied];"
+            f"[orig][blurred]overlay=x={overlay_x_expr}:y={overlay_y_expr}[blur_applied];"
             f"[blur_applied]drawbox=x={x_expr}:y={y_expr}:w={w_expr}:h={h_expr}"
             f":color={draw_color}:t=fill[v_out]"
         )
@@ -167,8 +171,9 @@ def run_export_task(
                 blur_rect_color,
             )
             # Compose: [0:v] → blur rect filter → [v_out] → ass subtitle
-            # We inject [0:v] as input and chain to ass filter.
-            vf_chain = f"[0:v]{blur_frag};[v_out]{ass_filter}"
+            # Replace [v_in] in the blur_frag with [0:v] to properly link the input video
+            blur_frag_linked = blur_frag.replace("[v_in]", "[0:v]")
+            vf_chain = f"{blur_frag_linked};[v_out]{ass_filter}"
             cmd = [
                 "ffmpeg", "-y",
                 "-i", "input.mp4",

@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 import { SubLine, SubStyle, BlurRectStyle } from './types/subtitle';
-import { parseSrt, linesToVtt, linesToSrt, downloadText, formatTime, secToSrtTime, hmsToSec } from './utils/subtitleUtils';
+import { parseSrt, parsePlainTextSubtitles, linesToVtt, linesToSrt, downloadText, formatTime, secToSrtTime, hmsToSec } from './utils/subtitleUtils';
 import DropZone from './components/DropZone';
 import VideoPlayer from './components/VideoPlayer';
 import SubtitleOverlay from './components/SubtitleOverlay';
@@ -43,6 +43,29 @@ const SubtitlePreviewPage: React.FC = () => {
     const [exportError, setExportError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
 
+    const decodeSubtitleFile = (buf: ArrayBuffer): string => {
+        const bytes = new Uint8Array(buf);
+
+        if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+            return new TextDecoder('utf-16le').decode(buf);
+        }
+        if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+            return new TextDecoder('utf-16be').decode(buf);
+        }
+
+        const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+        const replacementCount = (utf8.match(/\uFFFD/g) || []).length;
+        if (replacementCount > 0) {
+            try {
+                return new TextDecoder('windows-1252').decode(buf);
+            } catch {
+                return utf8;
+            }
+        }
+
+        return utf8;
+    };
+
     // Load video
     useEffect(() => {
         if (!videoFile) return;
@@ -57,24 +80,13 @@ const SubtitlePreviewPage: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const buf = e.target?.result as ArrayBuffer;
-            const bytes = new Uint8Array(buf);
-
-            let encoding = 'utf-8';
-            if (bytes[0] === 0xFF && bytes[1] === 0xFE) encoding = 'utf-16le';
-            else if (bytes[0] === 0xFE && bytes[1] === 0xFF) encoding = 'utf-16be';
-
-            let text: string;
-            try {
-                text = new TextDecoder(encoding).decode(buf);
-            } catch {
-                text = new TextDecoder('utf-8').decode(buf);
-            }
-
+            const text = decodeSubtitleFile(buf);
+            const encoding = 'auto';
             const rawRows = text.split('\n');
             const parsed = parseSrt(text);
 
             // ── Temporary diagnostic alert ──────────────────────────────
-            alert(
+            console.info(
                 `📋 SRT Parse Diagnostics\n\n` +
                 `File: ${srtFile.name}\n` +
                 `File size: ${srtFile.size} bytes\n` +
@@ -86,7 +98,9 @@ const SubtitlePreviewPage: React.FC = () => {
             );
             // ──────────────────────────────────────────────────────────
 
-            setLines(parsed);
+            setLines(parsed.length > 0 ? parsed : parsePlainTextSubtitles(text));
+            setEditingId(null);
+            setOffsetSec(0);
         };
         reader.readAsArrayBuffer(srtFile);
     }, [srtFile]);
@@ -323,7 +337,7 @@ const SubtitlePreviewPage: React.FC = () => {
                                     {activeLine ? (
                                         <div className="w-full flex flex-col items-center">
                                             <textarea
-                                                className="w-full text-center text-text-primary font-medium bg-transparent border-0 outline-none resize-none"
+                                                className="w-full text-center text-md text-text-primary font-bold bg-transparent border-0 outline-none resize-none"
                                                 rows={2}
                                                 value={activeLine.text}
                                                 onChange={(e) => updateLineText(activeLine.id, e.target.value)}
@@ -421,9 +435,9 @@ const SubtitlePreviewPage: React.FC = () => {
                                                         value={secToSrtTime(l.start + offsetSec).split(',')[0]}
                                                         onClick={e => { e.stopPropagation(); setEditingId(l.id); }}
                                                         onChange={e => updateLineTime(l.id, 'start', e.target.value)}
-                                                        className="w-[4.5rem] bg-transparent border border-transparent hover:border-border-primary rounded px-1 text-center text-xs text-text-tertiary font-mono outline-none focus:border-accent-primary focus:bg-surface-primary"
+                                                        className="w-[6rem] bg-transparent border border-transparent hover:border-border-primary rounded px-1 text-center text-md text-text-tertiary font-mono outline-none focus:border-accent-primary focus:bg-surface-primary"
                                                     />
-                                                    <div className="flex bg-transparent text-xs text-text-tertiary font-mono px-1 items-center gap-1">
+                                                    <div className="flex bg-transparent text-md text-text-tertiary font-mono px-1 items-center gap-1">
                                                         <span className="opacity-50">→</span>
                                                         <input
                                                             type="text"
@@ -442,7 +456,7 @@ const SubtitlePreviewPage: React.FC = () => {
                                                     onClick={e => { e.stopPropagation(); setEditingId(l.id); }}
                                                     onChange={e => updateLineText(l.id, e.target.value)}
                                                     onBlur={() => setEditingId(null)}
-                                                    className="flex-1 text-sm text-text-primary bg-transparent border-none outline-none resize-none leading-snug"
+                                                    className="flex-1 text-lg text-text-primary bg-transparent border-none outline-none resize-none leading-snug"
                                                     placeholder="Subtitle text..."
                                                 />
 

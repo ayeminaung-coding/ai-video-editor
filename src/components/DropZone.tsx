@@ -18,8 +18,19 @@ const DropZone: React.FC<{
             className={`relative border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200
         ${drag ? `border-${color} bg-${color}/5 scale-[1.01]` : fileName ? 'border-accent-success/50 bg-accent-success/5' : 'border-border-primary hover:border-border-secondary'}`}
         >
-            <input type="file" accept={accept} className="absolute inset-0 opacity-0 cursor-pointer"
-                onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
+            <input
+                type="file"
+                accept={accept}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onClick={e => {
+                    (e.currentTarget as HTMLInputElement).value = '';
+                }}
+                onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) onFile(f);
+                    e.currentTarget.value = '';
+                }}
+            />
             <div className="text-2xl mb-1">{fileName ? '✅' : icon}</div>
             <div className="text-sm font-semibold text-text-primary truncate">
                 {fileName ? fileName : label}
