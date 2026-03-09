@@ -23,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
 
   const quickActions = [
     { path: '/translate', label: 'Translate', icon: '🌏' },
+    { path: '/srt-exporter', label: 'SRT Exporter', icon: '📝' },
     { path: '/subtitle-preview', label: 'Sub Preview', icon: '🎞️' },
     { path: '/upload', label: 'Upload', icon: '📤' },
     { path: '/editor', label: 'Edit', icon: '✏️' },
