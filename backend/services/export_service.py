@@ -104,6 +104,9 @@ def run_export_task(
     blur_rect_opacity: int = 9,
     blur_rect_blur: int = 4,
     blur_rect_color: str = "#ffffff",
+    # Subtitle padding (pixels)
+    padding_h: int = 14,
+    padding_v: int = 6,
 ):
     job = get_export_job(job_id)
     if not job: 
@@ -133,7 +136,9 @@ def run_export_task(
             alpha_hex = f"{alpha_val:02X}"
             back_colour = f"&H{alpha_hex}000000&"
             border_style = 3
-            outline = 1.0
+            # In ASS BorderStyle=3, the Outline value is the box border/padding thickness.
+            # Use the larger of h/v padding so the box looks spacious on all sides.
+            outline = float(max(padding_h, padding_v, 1))
             shadow = 0.0
 
         ass_path = os.path.join(tmpdir, "sub.ass")
@@ -151,6 +156,9 @@ def run_export_task(
             back_colour=back_colour,
             alignment=alignment,
             margin_v=margin_v,
+            margin_h=24,
+            # Make the box border match the box fill (no visible ring around the subtitle box)
+            outline_colour=back_colour if border_style == 3 else "&H00000000&",
         )
 
         # Build the ASS subtitle filter

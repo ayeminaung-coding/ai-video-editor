@@ -25,5 +25,9 @@ export interface SubStyle {
     color: string;
     bgOpacity: number;
     position: 'bottom' | 'top';
+    /** Horizontal padding (left + right) applied around subtitle text, in pixels */
+    paddingH: number;
+    /** Vertical padding (top + bottom) applied around subtitle text, in pixels */
+    paddingV: number;
     blurRect: BlurRectStyle;
 }

@@ -27,6 +27,8 @@ const SubtitlePreviewPage: React.FC = () => {
         color: '#ffffff',
         bgOpacity: 70,
         position: 'bottom',
+        paddingH: 14,
+        paddingV: 6,
         blurRect: {
             enabled: false,
             xPct: 19,
@@ -160,6 +162,8 @@ const SubtitlePreviewPage: React.FC = () => {
             formData.append('color', subStyle.color);
             formData.append('position', subStyle.position);
             formData.append('bg_opacity', subStyle.bgOpacity.toString());
+            formData.append('padding_h', subStyle.paddingH.toString());
+            formData.append('padding_v', subStyle.paddingV.toString());
             // Blur rectangle params
             const br = subStyle.blurRect;
             formData.append('blur_rect_enabled', br.enabled ? 'true' : 'false');
@@ -498,6 +502,30 @@ const SubtitlePreviewPage: React.FC = () => {
                                         <input type="range" min={0} max={100} value={subStyle.bgOpacity}
                                             onChange={e => setSubStyle(s => ({ ...s, bgOpacity: Number(e.target.value) }))}
                                             className="w-full" />
+                                    </div>
+
+                                    {/* Horizontal padding */}
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <label className="text-sm font-semibold text-text-primary">Horizontal Padding</label>
+                                            <span className="text-sm text-text-secondary font-mono">{subStyle.paddingH}px</span>
+                                        </div>
+                                        <input type="range" min={0} max={60} value={subStyle.paddingH}
+                                            onChange={e => setSubStyle(s => ({ ...s, paddingH: Number(e.target.value) }))}
+                                            className="w-full" />
+                                        <p className="text-xs text-text-tertiary mt-1">Left &amp; right space inside the subtitle background box</p>
+                                    </div>
+
+                                    {/* Vertical padding */}
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <label className="text-sm font-semibold text-text-primary">Vertical Padding</label>
+                                            <span className="text-sm text-text-secondary font-mono">{subStyle.paddingV}px</span>
+                                        </div>
+                                        <input type="range" min={0} max={40} value={subStyle.paddingV}
+                                            onChange={e => setSubStyle(s => ({ ...s, paddingV: Number(e.target.value) }))}
+                                            className="w-full" />
+                                        <p className="text-xs text-text-tertiary mt-1">Top &amp; bottom space inside the subtitle background box</p>
                                     </div>
 
                                     {/* Text color */}

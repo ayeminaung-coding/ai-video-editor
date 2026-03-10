@@ -67,7 +67,7 @@ const SubtitleOverlay: React.FC<{
                             color: style.color,
                             fontSize: `${style.fontSize}px`,
                             lineHeight: 1.4,
-                            padding: '6px 14px',
+                            padding: `${style.paddingV}px ${style.paddingH}px`,
                             borderRadius: '6px',
                             textAlign: 'center',
                             maxWidth: '90%',

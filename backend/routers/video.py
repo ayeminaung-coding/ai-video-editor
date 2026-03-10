@@ -309,6 +309,9 @@ async def start_export_video(
     blur_rect_opacity: int = Form(9),             # 0–100
     blur_rect_blur: int = Form(4),                # blur radius px 0–30
     blur_rect_color: str = Form("#ffffff"),       # hex fill color
+    # ── Subtitle padding ──────────────────────────────────────────────────────
+    padding_h: int = Form(14),                    # horizontal padding (left+right) in ASS margin
+    padding_v: int = Form(6),                     # vertical padding (top+bottom) in ASS margin
 ):
     """
     Accepts video + sub, starts async export with FFmpeg using Padauk font.
@@ -377,6 +380,9 @@ async def start_export_video(
         blur_rect_opacity,
         blur_rect_blur,
         blur_rect_color,
+        # padding
+        padding_h,
+        padding_v,
     )
     
     return {"job_id": job_id}

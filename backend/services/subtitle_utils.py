@@ -91,6 +91,8 @@ def write_ass_from_srt(
     back_colour: str,
     alignment: int,
     margin_v: int,
+    margin_h: int = 24,
+    outline_colour: str = "&H00000000&",
 ):
     with open(srt_path, "r", encoding="utf-8-sig", errors="replace") as f:
         srt_text = f.read()
@@ -108,8 +110,8 @@ def write_ass_from_srt(
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Default,{font_name},{font_size},{primary_colour},&H000000FF,&H00000000,{back_colour},"
-        f"0,0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},24,24,{margin_v},0\n\n"
+        f"Style: Default,{font_name},{font_size},{primary_colour},&H000000FF,{outline_colour},{back_colour},"
+        f"0,0,0,0,100,100,0,0,{border_style},{outline:.1f},{shadow:.1f},{alignment},{margin_h},{margin_h},{margin_v},0\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
