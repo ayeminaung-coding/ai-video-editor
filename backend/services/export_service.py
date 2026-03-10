@@ -186,6 +186,7 @@ def run_export_task(
                 "ffmpeg", "-y",
                 "-i", "input.mp4",
                 "-filter_complex", vf_chain,
+                "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
                 "-c:a", "copy",
                 "output.mp4"
             ]
@@ -195,6 +196,7 @@ def run_export_task(
                 "ffmpeg", "-y",
                 "-i", "input.mp4",
                 "-vf", ass_filter,
+                "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
                 "-c:a", "copy",
                 "output.mp4"
             ]
