@@ -8,6 +8,7 @@ Python **FastAPI** backend for the AI Chinese → Burmese video translation pipe
 2. **Smart Split** — FFmpeg detects a natural silence near the midpoint and splits into Part 1 & Part 2
 3. **AI Translate** — Sends each part to **Vertex AI Gemini 3.1 Flash Lite**, which reads the on-screen Chinese text frame-by-frame and translates it to natural Burmese
 4. **Returns SRT** — Structured subtitle data (timestamps + Chinese source + Burmese translation) that the frontend editor can review, edit, and download
+5. **Standalone SRT Translator** — Direct translation of `.srt` or `.txt` subtitle files via Google AI Studio or Vertex AI directly using the newest Gemini models (e.g. Gemini 2.5 Pro).
 
 ---
 
@@ -114,6 +115,9 @@ Expected response:
 | `POST` | `/api/video/split/{video_id}`     | Smart-split near midpoint (optional `?split_at=90` to force) |
 | `POST` | `/api/video/translate/{video_id}` | Start Gemini translation (runs in background)                  |
 | `GET`  | `/api/video/status/{video_id}`    | Poll translation status → returns SRT data when done          |
+| `POST` | `/srt-translator/translate`       | Translate uploaded `.srt`/`.txt` file with Gemini              |
+| `GET`  | `/gemini/models`                  | List available Gemini and Vertex AI models                     |
+
 
 ---
 
