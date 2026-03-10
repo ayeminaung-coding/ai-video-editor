@@ -1,5 +1,15 @@
 # main.py — FastAPI application entry point
 
+# ── Disable PaddlePaddle OneDNN/MKL-DNN BEFORE any paddle import ─────────────
+# paddlepaddle 3.x on Windows crashes with "OneDnnContext does not have the
+# input Filter" when OneDNN is active. Setting these env vars at process start
+# is the only reliable fix (the PaddleOCR(enable_mkldnn=False) flag is ignored).
+import os
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_mkldnn_ops_list", "")
+os.environ.setdefault("CPU_NUM_THREADS", "1")
+# ─────────────────────────────────────────────────────────────────────────────
+
 import logging
 import sys
 from fastapi import FastAPI

@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import tempfile
 import logging
@@ -21,6 +22,13 @@ from collections import Counter
 from pathlib import Path
 from threading import RLock
 from typing import Callable, Optional, Dict
+
+# Disable OneDNN/MKL-DNN at the C++ environment level BEFORE any paddle import.
+# `enable_mkldnn=False` in PaddleOCR() is ignored by paddlepaddle 3.x on Windows,
+# causing the "OneDnnContext does not have the input Filter" crash.
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_mkldnn_ops_list", "")
+os.environ.setdefault("CPU_NUM_THREADS", "1")
 
 import cv2
 import numpy as np
