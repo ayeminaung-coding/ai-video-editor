@@ -47,6 +47,9 @@ uploads/
 backend/pip_conflict.txt
 backend/uv_err.txt
 *.txt.bak
+test_translate.py
+test.jpg
+test.png
 
 # pytest / coverage
 .pytest_cache/

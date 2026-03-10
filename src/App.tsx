@@ -18,6 +18,7 @@ import CreatorWorkflowPage from './CreatorWorkflowPage';
 import ResourceFinderPage from './ResourceFinderPage';
 import TranslatePage from './TranslatePage';
 import SrtExporterPage from './SrtExporterPage';
+import SrtTranslatorPage from './SrtTranslatorPage';
 import SubtitlePreviewPage from './SubtitlePreviewPage';
 import SettingsModal from './components/SettingsModal';
 
@@ -153,6 +154,10 @@ const App: React.FC = () => {
                   <Route
                     path="/srt-exporter"
                     element={<SrtExporterPage />}
+                  />
+                  <Route
+                    path="/srt-translator"
+                    element={<SrtTranslatorPage />}
                   />
                   <Route
                     path="/subtitle-preview"

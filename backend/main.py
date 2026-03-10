@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routers.video import router as video_router
 from routers.ocr import router as ocr_router
+from routers.srt_translator import router as srt_translator_router
+from routers.gemini_models import router as gemini_models_router
 
 # Configure logging
 logging.basicConfig(
@@ -55,11 +57,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
 app.include_router(video_router)
 app.include_router(ocr_router)
+app.include_router(srt_translator_router)
+app.include_router(gemini_models_router)
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────
