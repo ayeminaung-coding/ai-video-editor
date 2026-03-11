@@ -2,7 +2,7 @@
 
 const API_BASE_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) ||
-  'https://ai-video-editor-backend-production.up.railway.app';
+  'http://localhost:8000';
 
 export interface ApiVideo {
   id: string;
