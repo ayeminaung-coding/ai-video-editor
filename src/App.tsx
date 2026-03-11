@@ -20,6 +20,7 @@ import TranslatePage from './TranslatePage';
 import SrtExporterPage from './SrtExporterPage';
 import SrtTranslatorPage from './SrtTranslatorPage';
 import SubtitlePreviewPage from './SubtitlePreviewPage';
+import MetadataRemoverPage from './MetadataRemoverPage';
 import SettingsModal from './components/SettingsModal';
 
 interface EditSettings {
@@ -162,6 +163,10 @@ const App: React.FC = () => {
                   <Route
                     path="/subtitle-preview"
                     element={<SubtitlePreviewPage />}
+                  />
+                  <Route
+                    path="/metadata-remover"
+                    element={<MetadataRemoverPage />}
                   />
                 </Routes>
               </main>

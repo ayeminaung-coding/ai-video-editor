@@ -26,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/srt-translator', label: 'SRT Translator', icon: '🔤' },
     { path: '/srt-exporter', label: 'SRT Exporter', icon: '📝' },
     { path: '/subtitle-preview', label: 'Sub Preview', icon: '🎞️' },
+    { path: '/metadata-remover', label: 'Metadata Remover', icon: '🧹' },
     { path: '/upload', label: 'Upload', icon: '📤' },
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   ];
