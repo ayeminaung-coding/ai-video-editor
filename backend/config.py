@@ -3,7 +3,7 @@
 import json
 import os
 from typing import Dict, Any
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     # Frame sampling configuration (can be overridden per-request)
     ocr_sample_fps: float = 6.0            # For Gemini (API cost per frame)
     ocr_subtitle_band_ratio: float = 0.34
+    ocr_subtitle_position: float = 1.0     # 0.0=top, 0.5=middle, 1.0=bottom
     ocr_scene_threshold: float = 0.003
     ocr_periodic_sec: float = 0.6          # For Gemini engine
     ocr_max_keyframes: int = 140           # For Gemini engine (API cost cap)
@@ -59,6 +60,11 @@ class Settings(BaseSettings):
     # Blank-frame skip: frames with pixel std-dev below this value are skipped
     # Lower = more aggressive skip (set higher if low-contrast subs are missed)
     paddle_blank_frame_threshold: float = 6.0
+    # Change-detection gate: mean absolute pixel diff threshold (0.0–1.0)
+    # Frames with diff < this vs previous frame are skipped (subtitle unchanged → reuse prev OCR)
+    # Lower = more sensitive (more OCR calls), higher = fewer calls (may miss very similar subtitles)
+    # 0.008 is conservative enough to catch subtitle text changes while still skipping static frames
+    paddle_change_threshold: float = 0.008
 
     # Preprocessing configuration
     ocr_clahe_clip_limit: float = 2.0
@@ -91,10 +97,11 @@ class Settings(BaseSettings):
     # Valid languages for PaddleOCR
     valid_paddle_languages: list = ["ch", "en", "fr", "german", "korean", "japan"]
 
-    class Config:
-        env_file = str(_env_path)
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=str(_env_path),
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 
 settings = Settings()

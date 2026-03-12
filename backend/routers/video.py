@@ -5,16 +5,21 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from pydantic import BaseModel
+import os
+import tempfile
+import shutil
+import subprocess
+import threading
+import re
+import json
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, FileResponse
+from starlette.background import BackgroundTask
 import aiofiles
 from google.api_core.exceptions import PermissionDenied, Unauthenticated, Forbidden
-
-from pydantic import BaseModel
-from typing import Optional
 
 class TranslateSettingsOverride(BaseModel):
     provider: Optional[str] = None
@@ -24,20 +29,20 @@ class TranslateSettingsOverride(BaseModel):
     modelName: Optional[str] = None
 
 from config import settings
-from services.splitter import smart_split
+from services.splitter import smart_split, get_video_duration
 from services.gemini_translator import translate_both_parts
+from services.translation_service import run_translation_task
 from services.srt_builder import build_srt
+from services.job_store import create_job, get_job, pop_job, get_all_jobs
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/video", tags=["video"])
 
-# In-memory job store (use Redis/DB in production)
-_jobs: dict[str, dict[str, Any]] = {}
+# In-memory job store (use Redis/DB in production) -> Now centralized in job_store.py
 
 # Optimized thread pool - sized for CPU-bound OCR/translation tasks
 # Using min(32, cpu_count + 4) as per Python's concurrent.futures recommendation
-import os
 _max_workers = min(32, (os.cpu_count() or 4) + 4)
 _executor = ThreadPoolExecutor(max_workers=_max_workers, thread_name_prefix="video_worker")
 
@@ -49,9 +54,10 @@ def _job_dir(video_id: str) -> Path:
 
 
 def _get_job(video_id: str) -> dict:
-    if video_id not in _jobs:
+    job = get_job(video_id)
+    if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{video_id}' not found")
-    return _jobs[video_id]
+    return job
 
 
 # ─── POST /api/video/upload ───────────────────────────────────────────────────
@@ -77,14 +83,14 @@ async def upload_video(file: UploadFile = File(...)):
             await out.write(chunk)
 
     size = save_path.stat().st_size
-    _jobs[video_id] = {
+    create_job(video_id, {
         "video_id":    video_id,
         "status":      "uploaded",
         "original":    str(save_path),
         "split":       None,
         "translation": None,
         "error":       None,
-    }
+    })
 
     return {
         "video_id":   video_id,
@@ -116,11 +122,7 @@ async def split_video(video_id: str, split_at: float | None = None):
     loop = asyncio.get_event_loop()
 
     if split_at is not None:
-        # Forced manual split — import inline to avoid circular import
-        from services.splitter import get_video_duration
-        from services.splitter import smart_split as _smart_split
-        # We'll monkey-patch by passing it through smart_split with forced midpoint
-        # Actually, just call ffmpeg directly with the given split_at
+        # Forced manual split 
         result = await loop.run_in_executor(
             _executor,
             lambda: _force_split(original, str(job_dir), split_at)
@@ -145,10 +147,6 @@ async def split_video(video_id: str, split_at: float | None = None):
 
 def _force_split(video_path: str, output_dir: str, split_at: float) -> dict:
     """Hard cut at exact split_at seconds, no silence detection."""
-    import subprocess
-    from services.splitter import get_video_duration
-    from pathlib import Path
-
     output_dir = Path(output_dir)
     total_dur  = get_video_duration(video_path)
     split_at   = max(1.0, min(split_at, total_dur - 1.0))
@@ -222,10 +220,9 @@ async def translate_video(
             if overrides.modelName:
                 active_model = overrides.modelName
 
-    from services.translation_service import run_translation_task
     background_tasks.add_task(
         run_translation_task,
-        _jobs, 
+        get_all_jobs(), 
         video_id, 
         active_project, 
         active_region,
@@ -278,16 +275,7 @@ async def get_status(video_id: str):
 
 # ─── POST /api/video/export/start ──────────────────────────────────────
 
-import tempfile
-import os
-import shutil
-import subprocess
-import threading
-import re
-import json
-from fastapi import Form
-from fastapi.responses import FileResponse
-from starlette.background import BackgroundTask
+# ─── POST /api/video/export/start ──────────────────────────────────────
 
 from services.export_service import create_export_job, get_export_job, pop_export_job, run_export_task
 

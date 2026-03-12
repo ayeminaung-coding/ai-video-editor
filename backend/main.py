@@ -12,6 +12,7 @@ os.environ.setdefault("CPU_NUM_THREADS", "1")
 
 import logging
 import sys
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,6 +22,7 @@ from routers.ocr import router as ocr_router
 from routers.srt_translator import router as srt_translator_router
 from routers.gemini_models import router as gemini_models_router
 from routers.metadata import router as metadata_router
+from routers.tiktok_changer import router as tiktok_changer_router
 
 # Configure logging
 logging.basicConfig(
@@ -39,10 +41,34 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+# ─── Startup/Shutdown events ──────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    logger.info(f"Starting AI Video Editor Backend v1.1.0")
+    logger.info(f"Upload directory: {settings.upload_dir}")
+    logger.info(f"Thread pool workers: {__import__('os').cpu_count() or 4} CPUs detected")
+    
+    # Log active configuration
+    if settings.gemini_api_key:
+        logger.info("Using Google AI Studio (API Key)")
+    else:
+        logger.info(f"Using Vertex AI: project={settings.gcp_project_id}, region={settings.gcp_region}")
+        
+    yield
+    
+    # Shutdown logic
+    logger.info("Shutting down AI Video Editor Backend")
+    # Cleanup thread pools
+    from routers.video import _executor
+    _executor.shutdown(wait=True)
+    logger.info("All workers shut down cleanly")
+
 app = FastAPI(
     title="AI Video Editor — Backend",
     description="FFmpeg smart-split + Vertex AI Gemini translation pipeline",
     version="1.1.0",  # Updated version after optimizations
+    lifespan=lifespan,
 )
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
@@ -67,6 +93,7 @@ app.include_router(ocr_router)
 app.include_router(srt_translator_router)
 app.include_router(gemini_models_router)
 app.include_router(metadata_router)
+app.include_router(tiktok_changer_router)
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────
@@ -81,24 +108,4 @@ async def health():
     }
 
 
-# ─── Startup/Shutdown events ──────────────────────────────────────────────────
-@app.on_event("startup")
-async def startup_event():
-    logger.info(f"Starting AI Video Editor Backend v1.1.0")
-    logger.info(f"Upload directory: {settings.upload_dir}")
-    logger.info(f"Thread pool workers: {__import__('os').cpu_count() or 4} CPUs detected")
-    
-    # Log active configuration
-    if settings.gemini_api_key:
-        logger.info("Using Google AI Studio (API Key)")
-    else:
-        logger.info(f"Using Vertex AI: project={settings.gcp_project_id}, region={settings.gcp_region}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down AI Video Editor Backend")
-    # Cleanup thread pools
-    from routers.video import _executor
-    _executor.shutdown(wait=True)
-    logger.info("All workers shut down cleanly")
+# ─── Events moved to lifespan ──────────────────────────────────────────────────
