@@ -23,6 +23,8 @@ class OcrSettings(BaseModel):
     engine: str = Field(default="google", description="OCR engine: google, frame_sync, or paddle")
     frameSyncProfile: Optional[str] = Field(default="balanced", description="Frame sync profile: fast, balanced, thorough")
     paddleLang: Optional[str] = Field(default="ch", description="PaddleOCR language code")
+    subtitlePosition: Optional[float] = Field(default=1.0, description="OCR scanning position (0.0=top, 0.5=middle, 1.0=bottom)")
+    subtitleBandRatio: Optional[float] = Field(default=0.20, description="Height of scanned band as fraction of frame height (0.05-0.60)")
     provider: Optional[str] = Field(default=None, description="Provider: studio or vertex")
     vertexProjectId: Optional[str] = Field(default=None, description="Vertex AI project ID")
     vertexRegion: Optional[str] = Field(default=None, description="Vertex AI region")
@@ -104,6 +106,8 @@ async def start_ocr(
         (overrides.engine if overrides and overrides.engine else "google"),
         (overrides.frameSyncProfile if overrides and overrides.frameSyncProfile else "balanced"),
         (overrides.paddleLang if overrides and overrides.paddleLang else "ch"),
+        (overrides.subtitlePosition if overrides and overrides.subtitlePosition is not None else 1.0),
+        (overrides.subtitleBandRatio if overrides and overrides.subtitleBandRatio is not None else 0.20),
     )
     return {"video_id": video_id, "status": "processing"}
 
