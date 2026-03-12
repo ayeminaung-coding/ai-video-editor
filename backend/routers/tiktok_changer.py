@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/tiktok", tags=["tiktok_changer"])
 
-# ─── In-memory job store ───────────────────────────────────────────────────────
-_jobs: dict[str, dict] = {}
+from services.job_store import create_job, get_job, pop_job
 
 # ─── Project font directory ───────────────────────────────────────────────────
 # Fonts are stored in src/font relative to the project root so they are portable
@@ -139,7 +138,7 @@ def _run_tiktok_export(
     
     Called in a dedicated daemon thread so it never blocks the uvicorn event loop.
     """
-    job = _jobs.get(job_id)
+    job = get_job(job_id)
     if not job:
         return
 
@@ -339,14 +338,14 @@ async def start_tiktok_export(
         while chunk := await video_file.read(1024 * 1024):
             await f.write(chunk)
 
-    _jobs[job_id] = {
+    create_job(job_id, {
         "status":    "queued",
         "progress":  0.0,
         "error":     None,
         "tmpdir":    tmpdir,
         "out_path":  out_path,
         "file_name": video_file.filename or "video.mp4",
-    }
+    })
 
     # Use a daemon thread so FFmpeg runs truly in parallel without blocking uvicorn
     t = threading.Thread(
@@ -365,7 +364,7 @@ async def start_tiktok_export(
 
 @router.get("/export/status/{job_id}")
 async def tiktok_export_status(job_id: str):
-    job = _jobs.get(job_id)
+    job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return {
@@ -379,11 +378,11 @@ async def tiktok_export_status(job_id: str):
 
 @router.get("/export/download/{job_id}")
 async def tiktok_export_download(job_id: str):
-    job = _jobs.pop(job_id, None)
+    job = pop_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found or already downloaded")
     if job["status"] != "done":
-        _jobs[job_id] = job  # put it back
+        create_job(job_id, job)  # put it back
         raise HTTPException(status_code=400, detail="Export not finished yet")
 
     def cleanup():

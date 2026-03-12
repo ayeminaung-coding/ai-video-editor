@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from config import settings
-from routers.video import _get_job, _jobs
+from services.job_store import get_job as _get_job, get_all_jobs
 from services.ocr_service import run_ocr_task
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ async def start_ocr(
 
     background_tasks.add_task(
         run_ocr_task,
-        _jobs,
+        get_all_jobs(),
         video_id,
         active_project,
         active_region,

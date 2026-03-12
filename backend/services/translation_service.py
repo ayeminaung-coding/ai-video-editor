@@ -2,6 +2,9 @@
 
 from google.api_core.exceptions import PermissionDenied, Unauthenticated, Forbidden
 from services.gemini_translator import translate_both_parts
+import logging
+
+logger = logging.getLogger(__name__)
 
 def run_translation_task(
     job_store: dict,
@@ -39,7 +42,7 @@ def run_translation_task(
             f"Details: {exc}"
         )
         job["status"] = "error"
-        print(f"[translate] Permission error for {video_id}: {exc}")
+        logger.error(f"[translate] Permission error for {video_id}: {exc}")
 
     except Unauthenticated as exc:
         job["error"] = (
@@ -49,9 +52,9 @@ def run_translation_task(
             f"Details: {exc}"
         )
         job["status"] = "error"
-        print(f"[translate] Auth error for {video_id}: {exc}")
+        logger.error(f"[translate] Auth error for {video_id}: {exc}")
 
     except Exception as exc:
         job["error"]  = f"Unexpected translation error: {exc}"
         job["status"] = "error"
-        print(f"[translate] Error for {video_id}: {exc}")
+        logger.error(f"[translate] Error for {video_id}: {exc}")
