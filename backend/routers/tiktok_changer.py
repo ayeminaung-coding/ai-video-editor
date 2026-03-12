@@ -70,13 +70,18 @@ def _build_drawtext_filters(
     canvas_h: int,
     tmpdir: str,
     font_file: Optional[str],
+    ui_canvas_w: int = 405,  # Matches frontend UI preview width
+    ui_canvas_h: int = 720,  # Matches frontend UI preview height
 ) -> list[str]:
     """Build one drawtext fragment per text layer.
 
     We write each text to a temp file (textfile=) to avoid ANY escaping issues
-    with Unicode (especially Myanmar script). Bold/italic are handled by
-    appending ' Bold' / ' Italic' to the font= family name.
+    with Unicode (especially Myanmar script). 
+    Coordinates and font sizes are scaled from UI units up to final video units.
     """
+    scale_x = canvas_w / ui_canvas_w
+    scale_y = canvas_h / ui_canvas_h
+
     fragments = []
     for i, layer in enumerate(text_layers):
         raw_text = layer.get("text", "")
@@ -85,14 +90,28 @@ def _build_drawtext_filters(
 
         x_pct        = float(layer.get("xPct", 50))
         y_pct        = float(layer.get("yPct", 50))
-        x            = int(canvas_w * x_pct / 100)
-        y            = int(canvas_h * y_pct / 100)
-        font_size    = int(layer.get("fontSize", 48))
+        
+        # Raw UI values
+        ui_font_size    = float(layer.get("fontSize", 48))
+        ui_stroke_width = float(layer.get("strokeWidth", 3))
+
+        # Scale to final resolution
+        font_size    = int(ui_font_size * scale_y)
+        stroke_width = int(ui_stroke_width * scale_y)
+        
+        # Base coordinates
+        x = int(canvas_w * x_pct / 100)
+        y = int(canvas_h * y_pct / 100)
+        
+        # FIX: The frontend UI (HTML Canvas) draws text from the bottom-left baseline natively.
+        # FFmpeg 'drawtext' draws from the top-left corner natively.
+        # We must push the FFmpeg text UP by roughly the font size height to align perfectly.
+        y = max(0, y - font_size)
+
         color        = layer.get("color", "#ffffff").lstrip("#")
         shadow       = bool(layer.get("shadow", True))
         stroke       = bool(layer.get("stroke", False))
         stroke_color = layer.get("strokeColor", "#000000").lstrip("#")
-        stroke_width = int(layer.get("strokeWidth", 3))
 
         # Write text to file — avoids all FFmpeg drawtext escaping problems
         text_file = os.path.join(tmpdir, f"layer_{i}.txt")
@@ -133,6 +152,8 @@ def _run_tiktok_export(
     bg_color: str,         # hex e.g. "#1a1a2e"
     text_layers: list[dict],
     original_filename: str,
+    ui_canvas_w: int = 405, 
+    ui_canvas_h: int = 720,
 ):
     """Run FFmpeg to produce a 9:16 (1080×1920) MP4.
     
@@ -151,7 +172,15 @@ def _run_tiktok_export(
 
         # ── Build drawtext chain ───────────────────────────────────────────────
         font_file      = _find_font()
-        drawtext_frags = _build_drawtext_filters(text_layers, TARGET_W, TARGET_H, tmpdir, font_file)
+        drawtext_frags = _build_drawtext_filters(
+            text_layers=text_layers, 
+            canvas_w=TARGET_W, 
+            canvas_h=TARGET_H, 
+            tmpdir=tmpdir, 
+            font_file=font_file,
+            ui_canvas_w=ui_canvas_w,
+            ui_canvas_h=ui_canvas_h
+        )
         dt_chain       = ",".join(drawtext_frags)
 
         job["progress"] = 25.0
@@ -165,13 +194,19 @@ def _run_tiktok_export(
         # IMPORTANT: fg must NOT use black padding — that would cover the blur bg.
 
         if bg_mode == "blur":
-            # Background: scale to cover full 9:16, center-crop, then blur
+            # OPTIMIZATION: Blurring a massive 1080x1920 video is agonizingly slow.
+            # Instead, we pull a tiny low-res 270x480 proxy, blur it fast, 
+            # and scale it up to 1080x1920. Since it's heavily blurred, it looks identical.
+            
+            # Sub-scale constants for proxy blur
+            bw, bh = TARGET_W // 4, TARGET_H // 4  # 270, 480
+            mapped_blur = max(1, blur_px // 4)
+            
             bg_f = (
-                f"[0:v]scale={TARGET_W}:{TARGET_H}"
-                f":force_original_aspect_ratio=increase:flags=lanczos,"
-                f"crop={TARGET_W}:{TARGET_H},"
-                f"boxblur=luma_radius={blur_px}:luma_power=2"
-                f":chroma_radius={blur_px}:chroma_power=2[bg]"
+                f"[0:v]scale={bw}:{bh}:force_original_aspect_ratio=increase:flags=fast_bilinear,"
+                f"crop={bw}:{bh},"
+                f"boxblur=luma_radius={mapped_blur}:luma_power=1:chroma_radius={mapped_blur}:chroma_power=1,"
+                f"scale={TARGET_W}:{TARGET_H}:flags=fast_bilinear[bg]"
             )
             # Foreground: scale to fit width (1080), height auto
             fg_f = f"[0:v]scale={TARGET_W}:-2:flags=lanczos[fg]"
@@ -191,7 +226,7 @@ def _run_tiktok_export(
                 "-filter_complex", fc,
                 "-map", vmap,
                 "-map", "0:a?",
-                "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
                 out_path,
@@ -222,7 +257,7 @@ def _run_tiktok_export(
                 "-map", vmap,
                 "-map", "1:a?",
                 "-shortest",
-                "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
                 out_path,
@@ -315,6 +350,8 @@ async def start_tiktok_export(
     blur_px: int = Form(20),
     bg_color: str = Form("#000000"),
     text_layers: str = Form("[]"),   # JSON array
+    ui_canvas_w: int = Form(405),    # Frontend preview dimensions
+    ui_canvas_h: int = Form(720),
 ):
     """Start a TikTok 9:16 export job (runs in background thread)."""
     if not _check_ffmpeg():
@@ -352,7 +389,8 @@ async def start_tiktok_export(
         target=_run_tiktok_export,
         args=(job_id, tmpdir, video_path, out_path,
               bg_mode, blur_px, bg_color, layers,
-              video_file.filename or "video.mp4"),
+              video_file.filename or "video.mp4",
+              ui_canvas_w, ui_canvas_h),
         daemon=True,
     )
     t.start()
