@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 import logging
+from difflib import SequenceMatcher
 from statistics import median
 from pathlib import Path
 from typing import Callable, Optional, Dict, Any
@@ -118,11 +119,33 @@ def _clean_for_compare(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
 
+# Fuzzy similarity threshold: texts with ≥ this ratio are treated as the same subtitle.
+# 0.85 = allows ~15% character-level OCR noise (e.g., "He1lo" ≈ "Hello")
+# Lower = more aggressive combining (may merge distinct subtitles)
+# Higher = stricter (may fail to combine noisy OCR variants)
+_SAME_TEXT_RATIO = 0.85
+
+
+def _texts_are_similar(a: str, b: str) -> bool:
+    """
+    Return True if two cleaned OCR texts are close enough to be the same subtitle.
+    Uses difflib.SequenceMatcher which is O(n*m) but fast for short subtitle strings.
+    Exact match always returns True immediately.
+    """
+    if a == b:
+        return True
+    if not a or not b:
+        return False
+    ratio = SequenceMatcher(None, a, b, autojunk=False).ratio()
+    return ratio >= _SAME_TEXT_RATIO
+
+
 def _extract_keyframes_for_subtitles(
     video_path: str,
     output_dir: str,
     sample_fps: float = None,
     subtitle_band_ratio: float = None,
+    subtitle_position: float = None,
     scene_threshold: float = None,
     periodic_sec: float = None,
 ) -> tuple[list[tuple[float, str]], float]:
@@ -134,6 +157,7 @@ def _extract_keyframes_for_subtitles(
     # Apply config defaults
     sample_fps = sample_fps if sample_fps is not None else settings.ocr_sample_fps
     subtitle_band_ratio = subtitle_band_ratio if subtitle_band_ratio is not None else settings.ocr_subtitle_band_ratio
+    subtitle_position = subtitle_position if subtitle_position is not None else settings.ocr_subtitle_position
     scene_threshold = scene_threshold if scene_threshold is not None else settings.ocr_scene_threshold
     periodic_sec = periodic_sec if periodic_sec is not None else settings.ocr_periodic_sec
     
@@ -141,13 +165,19 @@ def _extract_keyframes_for_subtitles(
     duration = _probe_duration(video_path)
     out_pattern = str(Path(output_dir) / "frame_%06d.jpg")
     band = min(max(subtitle_band_ratio, MIN_SUBTITLE_BAND), MAX_SUBTITLE_BAND)
+    # Position: 0.0 (top) to 1.0 (bottom)
+    pos = min(max(subtitle_position, 0.0), 1.0)
     fps = min(max(sample_fps, MIN_SAMPLE_FPS), MAX_SAMPLE_FPS)
     threshold = min(max(scene_threshold, MIN_SCENE_THRESHOLD), MAX_SCENE_THRESHOLD)
     period_frames = max(MIN_KEYFRAMES, round(fps * max(MIN_PERIODIC_SEC, periodic_sec)))
 
+    band_height = f"ih*{band}"
+    # Calculate y offset based on position mapping
+    y_offset = f"(ih-{band_height})*{pos}"
+
     vf = (
         f"fps={fps},"
-        f"crop=iw:ih*{band}:0:ih-ih*{band},"
+        f"crop=iw:{band_height}:0:{y_offset},"
         f"select=eq(n\\,0)+gt(scene\\,{threshold})+not(mod(n\\,{period_frames})),"
         "showinfo"
     )
@@ -284,8 +314,13 @@ def _build_lines_from_events(events: list[tuple[float, str]], duration: float) -
             active_clean = ""
             blank_since = None
 
-        if clean == active_clean:
+        # Fuzzy same-subtitle check: treat minor OCR noise as same line
+        if _texts_are_similar(clean, active_clean):
             blank_since = None
+            # Keep whichever text is longer (usually cleaner OCR read)
+            if len(clean) > len(active_clean):
+                active_text = text
+                active_clean = clean
             continue
 
         # Close previous line before starting new one
@@ -410,6 +445,7 @@ def extract_text_from_video_frame_sync(
     model_name: str,
     sample_fps: float = None,
     subtitle_band_ratio: float = None,
+    subtitle_position: float = None,
     scene_threshold: float = None,
     periodic_sec: float = None,
     max_keyframes: int = None,
@@ -423,6 +459,7 @@ def extract_text_from_video_frame_sync(
     # Apply defaults
     sample_fps = sample_fps if sample_fps is not None else settings.ocr_sample_fps
     subtitle_band_ratio = subtitle_band_ratio if subtitle_band_ratio is not None else settings.ocr_subtitle_band_ratio
+    subtitle_position = subtitle_position if subtitle_position is not None else settings.ocr_subtitle_position
     scene_threshold = scene_threshold if scene_threshold is not None else settings.ocr_scene_threshold
     periodic_sec = periodic_sec if periodic_sec is not None else settings.ocr_periodic_sec
     max_keyframes = max_keyframes if max_keyframes is not None else settings.ocr_max_keyframes
@@ -433,6 +470,7 @@ def extract_text_from_video_frame_sync(
             output_dir=tmp,
             sample_fps=sample_fps,
             subtitle_band_ratio=subtitle_band_ratio,
+            subtitle_position=subtitle_position,
             scene_threshold=scene_threshold,
             periodic_sec=periodic_sec,
         )
@@ -515,6 +553,8 @@ def run_ocr_task(
     engine: str = "google",
     frame_sync_profile: str = "balanced",
     paddle_lang: str = "ch",
+    subtitle_position: float = 1.0,
+    subtitle_band_ratio: float = 0.20,
 ):
     """
     Background OCR task orchestrator.
@@ -537,10 +577,12 @@ def run_ocr_task(
             if paddle_lang not in settings.valid_paddle_languages:
                 raise ValueError(f"Invalid PaddleOCR language: {paddle_lang}. Valid: {settings.valid_paddle_languages}")
             
-            logger.info(f"Starting PaddleOCR for {video_id} (lang={paddle_lang})")
+            logger.info(f"Starting PaddleOCR for {video_id} (lang={paddle_lang}, pos={subtitle_position}, band={subtitle_band_ratio})")
             result = extract_text_paddle_ocr(
                 video_path=job["original"],
                 lang=paddle_lang,
+                subtitle_position=subtitle_position,
+                subtitle_band_ratio=subtitle_band_ratio,
                 progress_cb=lambda p: job.__setitem__("ocr_progress", round(p, 4)),
             )
             
@@ -555,7 +597,7 @@ def run_ocr_task(
             }
             fs_cfg = profiles.get(profile, profiles["balanced"])
 
-            logger.info(f"Starting frame-sync OCR for {video_id} (profile={profile})")
+            logger.info(f"Starting frame-sync OCR for {video_id} (profile={profile}, pos={subtitle_position}, band={subtitle_band_ratio})")
             result = extract_text_from_video_frame_sync(
                 video_path=job["original"],
                 project_id=project_id,
@@ -563,6 +605,8 @@ def run_ocr_task(
                 api_key=api_key,
                 model_name=model_name,
                 sample_fps=fs_cfg["sample_fps"],
+                subtitle_position=subtitle_position,
+                subtitle_band_ratio=subtitle_band_ratio,
                 periodic_sec=fs_cfg["periodic_sec"],
                 scene_threshold=fs_cfg["scene_threshold"],
                 max_keyframes=fs_cfg["max_keyframes"],

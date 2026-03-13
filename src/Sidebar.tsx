@@ -23,11 +23,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
 
   const quickActions = [
     { path: '/translate', label: 'Translate', icon: '🌏' },
+    { path: '/srt-translator', label: 'SRT Translator', icon: '🔤' },
     { path: '/srt-exporter', label: 'SRT Exporter', icon: '📝' },
     { path: '/subtitle-preview', label: 'Sub Preview', icon: '🎞️' },
+    { path: '/metadata-remover', label: 'Metadata Remover', icon: '🧹' },
+    { path: '/tiktok-changer', label: 'TikTok Changer', icon: '🎵' },
+    { path: '/thumbnail-cover', label: 'Thumbnail Cover', icon: '🖼️' },
     { path: '/upload', label: 'Upload', icon: '📤' },
-    { path: '/editor', label: 'Edit', icon: '✏️' },
-    { path: '/preview', label: 'Preview', icon: '👁️' },
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   ];
 

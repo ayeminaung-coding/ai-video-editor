@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { apiUploadVideo, type SrtLineRaw } from './translateApi';
 import { apiPollOcrStatus } from './ocrApi';
 import { useSettings } from './contexts/SettingsContext';
@@ -210,9 +210,32 @@ const OcrSettingsStep: React.FC<{
     const [engine, setEngine] = useState<'google' | 'frame_sync' | 'paddle'>('frame_sync');
     const [frameSyncProfile, setFrameSyncProfile] = useState<'fast' | 'balanced' | 'thorough'>('balanced');
     const [paddleLang, setPaddleLang] = useState<string>('ch');
+    const [subtitlePosition, setSubtitlePosition] = useState<number>(1.0);
+    const [subtitleBandRatio, setSubtitleBandRatio] = useState<number>(0.20);
     const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle');
     const [progressPct, setProgressPct] = useState<number>(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [previewFrame, setPreviewFrame] = useState<string | null>(null);
+
+    // Capture first frame of the video for the preview
+    const videoUrl = useMemo(() => URL.createObjectURL(file), [file]);
+    useEffect(() => {
+        const vid = document.createElement('video');
+        vid.src = videoUrl;
+        vid.crossOrigin = 'anonymous';
+        vid.currentTime = 1;
+        vid.onloadeddata = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = vid.videoWidth;
+            canvas.height = vid.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(vid, 0, 0);
+                setPreviewFrame(canvas.toDataURL('image/jpeg', 0.8));
+            }
+        };
+        return () => { URL.revokeObjectURL(videoUrl); };
+    }, [videoUrl]);
 
     const startOcr = async () => {
         try {
@@ -224,7 +247,7 @@ const OcrSettingsStep: React.FC<{
             const res = await fetch(`/api/ocr/start/${video_id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ engine, frameSyncProfile, paddleLang, ...settings })
+                body: JSON.stringify({ engine, frameSyncProfile, paddleLang, subtitlePosition, subtitleBandRatio, ...settings })
             });
             if (!res.ok) throw new Error("Failed to start OCR pipeline");
 
@@ -354,6 +377,97 @@ const OcrSettingsStep: React.FC<{
                             )}
                         </div>
                     </label>
+                </div>
+            </Card>
+
+            <Card>
+                <div className="mb-4">
+                    <h3 className="font-bold text-text-primary text-base">Subtitle Region</h3>
+                    <p className="text-sm text-text-secondary mt-0.5">Fine-tune exactly which part of the frame is scanned for subtitles.</p>
+                </div>
+
+                {/* Real video frame preview with interactive scan-band overlay */}
+                <div className="relative w-full rounded-lg overflow-hidden mb-5 border border-border-primary bg-black" style={{ aspectRatio: '16/9' }}>
+                    {previewFrame ? (
+                        <img src={previewFrame} alt="Video frame preview" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-text-tertiary text-xs">
+                            Loading preview…
+                        </div>
+                    )}
+                    {/* Scan-region overlay */}
+                    <div
+                        className="absolute left-0 right-0 transition-all duration-150 pointer-events-none"
+                        style={{
+                            top: `${Math.max(0, subtitlePosition - subtitleBandRatio) * 100}%`,
+                            height: `${subtitleBandRatio * 100}%`,
+                        }}
+                    >
+                        {/* Dimming above */}
+                        <div className="absolute inset-0 bg-accent-primary/20 border-y-2 border-accent-primary" />
+                        {/* Label */}
+                        <div className="absolute right-1 top-0.5 text-[10px] font-bold text-accent-primary bg-black/60 px-1 rounded">OCR Region</div>
+                    </div>
+                    {/* Dim areas outside scan region */}
+                    <div className="absolute top-0 left-0 right-0 bg-black/50 pointer-events-none transition-all duration-150"
+                        style={{ height: `${Math.max(0, subtitlePosition - subtitleBandRatio) * 100}%` }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 pointer-events-none transition-all duration-150"
+                        style={{ height: `${Math.max(0, 1 - subtitlePosition) * 100}%` }}
+                    />
+                </div>
+
+                <div className="space-y-5">
+                    <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-sm font-semibold text-text-secondary">Vertical Position</label>
+                            <span className="text-xs font-mono text-accent-primary">
+                                {subtitlePosition === 0.0 ? 'Top' : subtitlePosition === 1.0 ? 'Bottom' : `${Math.round(subtitlePosition * 100)}% from top`}
+                            </span>
+                        </div>
+                        <input
+                            type="range" min={0} max={100} step={1}
+                            value={Math.round(subtitlePosition * 100)}
+                            onChange={(e) => setSubtitlePosition(Number(e.target.value) / 100)}
+                            className="w-full h-2 rounded-full appearance-none bg-surface-tertiary accent-accent-primary cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
+                            <span>Top</span><span>Middle</span><span>Bottom</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-sm font-semibold text-text-secondary">Band Height (scan area)</label>
+                            <span className="text-xs font-mono text-accent-primary">{Math.round(subtitleBandRatio * 100)}% of frame</span>
+                        </div>
+                        <input
+                            type="range" min={5} max={60} step={1}
+                            value={Math.round(subtitleBandRatio * 100)}
+                            onChange={(e) => setSubtitleBandRatio(Number(e.target.value) / 100)}
+                            className="w-full h-2 rounded-full appearance-none bg-surface-tertiary accent-accent-primary cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
+                            <span>5% (thin)</span><span>30%</span><span>60% (tall)</span>
+                        </div>
+                    </div>
+
+                    {/* Quick presets */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        <span className="text-xs text-text-tertiary self-center">Presets:</span>
+                        {[
+                            { label: '🔝 Top 20%', pos: 0.20, band: 0.20 },
+                            { label: '📺 Middle', pos: 0.5, band: 0.20 },
+                            { label: '⬇️ Bottom 20%', pos: 1.0, band: 0.20 },
+                            { label: '⬇️ Bottom 30%', pos: 1.0, band: 0.30 },
+                        ].map(p => (
+                            <button
+                                key={p.label} type="button"
+                                onClick={() => { setSubtitlePosition(p.pos); setSubtitleBandRatio(p.band); }}
+                                className="px-2.5 py-1 text-xs rounded-lg border border-border-primary text-text-secondary hover:border-accent-primary hover:text-accent-primary transition-colors"
+                            >{p.label}</button>
+                        ))}
+                    </div>
                 </div>
             </Card>
 

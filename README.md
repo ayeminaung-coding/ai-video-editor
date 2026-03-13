@@ -227,11 +227,13 @@ POST   /api/videos/:id/export - Export video
 
 ### AI API
 ```
-POST   /api/ai/trim         - AI trim suggestion
-POST   /api/ai/speed        - AI speed adjustment
-POST   /api/ai/overlay      - AI text overlay
-POST   /api/ai/music        - AI music recommendation
-POST   /api/ai/export       - AI export optimization
+POST   /api/ai/trim               - AI trim suggestion
+POST   /api/ai/speed              - AI speed adjustment
+POST   /api/ai/overlay            - AI text overlay
+POST   /api/ai/music              - AI music recommendation
+POST   /api/ai/export             - AI export optimization
+POST   /srt-translator/translate  - Translate SRT/TXT subtitle files
+GET    /gemini/models             - List available Gemini AI models
 ```
 
 ## Features in Detail
@@ -257,6 +259,7 @@ POST   /api/ai/export       - AI export optimization
 - **Text Suggestions**: AI suggests text overlays
 - **Music Match**: AI recommends music based on mood
 - **Export Optimization**: AI optimizes export settings
+- **SRT Translator**: Direct translation of standalone `.srt` or `.txt` subtitle files into desired languages via Google AI Studio or Vertex AI Gemini models.
 
 ### Export Options
 - **Quality**: 480p, 720p, 1080p

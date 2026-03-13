@@ -4,24 +4,23 @@ import subprocess
 import re
 from services.subtitle_utils import write_ass_from_srt
 
-# In-memory store for export jobs
-export_jobs = {}
+from services.job_store import create_job as _create_job, get_job as _get_job, pop_job as _pop_job
 
 def create_export_job(job_id: str, tmpdir: str, out_path: str, file_name: str):
-    export_jobs[job_id] = {
+    _create_job(job_id, {
         "status": "processing",
         "progress": 0.0,
         "tmpdir": tmpdir,
         "out_path": out_path,
         "file_name": file_name,
         "error": None
-    }
+    })
 
 def get_export_job(job_id: str):
-    return export_jobs.get(job_id)
+    return _get_job(job_id)
 
 def pop_export_job(job_id: str):
-    return export_jobs.pop(job_id, None)
+    return _pop_job(job_id)
 
 
 def _hex_to_ffmpeg_drawbox_color(hex_color: str, opacity: int) -> str:
@@ -184,21 +183,21 @@ def run_export_task(
             vf_chain = f"{blur_frag_linked};[v_out]{ass_filter}"
             cmd = [
                 "ffmpeg", "-y",
-                "-i", "input.mp4",
+                "-i", video_path,
                 "-filter_complex", vf_chain,
                 "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
                 "-c:a", "copy",
-                "output.mp4"
+                out_path
             ]
         else:
             # Original simple path: just -vf with ass filter
             cmd = [
                 "ffmpeg", "-y",
-                "-i", "input.mp4",
+                "-i", video_path,
                 "-vf", ass_filter,
                 "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
                 "-c:a", "copy",
-                "output.mp4"
+                out_path
             ]
         
         # First, find total duration using ffprobe

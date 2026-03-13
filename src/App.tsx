@@ -18,7 +18,11 @@ import CreatorWorkflowPage from './CreatorWorkflowPage';
 import ResourceFinderPage from './ResourceFinderPage';
 import TranslatePage from './TranslatePage';
 import SrtExporterPage from './SrtExporterPage';
+import SrtTranslatorPage from './SrtTranslatorPage';
 import SubtitlePreviewPage from './SubtitlePreviewPage';
+import MetadataRemoverPage from './MetadataRemoverPage';
+import TikTokChangerPage from './TikTokChangerPage';
+import ThumbnailCoverPage from './ThumbnailCoverPage';
 import SettingsModal from './components/SettingsModal';
 
 interface EditSettings {
@@ -155,8 +159,24 @@ const App: React.FC = () => {
                     element={<SrtExporterPage />}
                   />
                   <Route
+                    path="/srt-translator"
+                    element={<SrtTranslatorPage />}
+                  />
+                  <Route
                     path="/subtitle-preview"
                     element={<SubtitlePreviewPage />}
+                  />
+                  <Route
+                    path="/metadata-remover"
+                    element={<MetadataRemoverPage />}
+                  />
+                  <Route
+                    path="/tiktok-changer"
+                    element={<TikTokChangerPage />}
+                  />
+                  <Route
+                    path="/thumbnail-cover"
+                    element={<ThumbnailCoverPage />}
                   />
                 </Routes>
               </main>
