@@ -286,7 +286,7 @@ async def start_export_video(
     srt_file: UploadFile = File(...),
     font_size: int = Form(20),
     color: str = Form("#ffffff"),
-    position: str = Form("bottom"),
+    alignment: int = Form(2),
     bg_opacity: int = Form(70),
     # ── Blur rectangle params ──────────────────────────────────────────────────
     blur_rect_enabled: str = Form("false"),       # "true" | "false"
@@ -297,6 +297,12 @@ async def start_export_video(
     blur_rect_opacity: int = Form(9),             # 0–100
     blur_rect_blur: int = Form(4),                # blur radius px 0–30
     blur_rect_color: str = Form("#ffffff"),       # hex fill color
+    # ── Text Stroke ───────────────────────────────────────────────────────────
+    stroke_enabled: str = Form("false"),
+    stroke_color: str = Form("#000000"),
+    stroke_size: float = Form(2.0),
+    margin_v: int = Form(15),                     # vertical offset from edge
+    margin_h: int = Form(15),                     # horizontal offset from edge
     # ── Subtitle padding ──────────────────────────────────────────────────────
     padding_h: int = Form(14),                    # horizontal padding (left+right) in ASS margin
     padding_v: int = Form(6),                     # vertical padding (top+bottom) in ASS margin
@@ -358,7 +364,7 @@ async def start_export_video(
     
     background_tasks.add_task(
         run_export_task,
-        job_id, tmpdir, video_path, srt_path, out_path, font_size, color, position, bg_opacity, font_name, font_dir_param,
+        job_id, tmpdir, video_path, srt_path, out_path, font_size, color, alignment, bg_opacity, font_name, font_dir_param,
         # blur rect
         blur_rect_enabled.lower() == "true",
         blur_rect_x_pct,
@@ -368,6 +374,12 @@ async def start_export_video(
         blur_rect_opacity,
         blur_rect_blur,
         blur_rect_color,
+        # stroke
+        stroke_enabled.lower() == "true",
+        stroke_color,
+        stroke_size,
+        margin_v,
+        margin_h,
         # padding
         padding_h,
         padding_v,

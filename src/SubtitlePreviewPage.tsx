@@ -23,20 +23,25 @@ const SubtitlePreviewPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'preview' | 'lines' | 'style'>('preview');
     const [editingId, setEditingId] = useState<number | null>(null);
     const [subStyle, setSubStyle] = useState<SubStyle>({
-        fontSize: 20,
+        fontSize: 25,
         color: '#ffffff',
-        bgOpacity: 70,
-        position: 'bottom',
-        paddingH: 14,
-        paddingV: 6,
+        bgOpacity: 0,
+        strokeEnabled: true,
+        strokeColor: '#000000',
+        strokeSize: 4,
+        alignment: 2,
+        marginV: 7,
+        marginH: 15,
+        paddingH: 15,
+        paddingV: 10,
         blurRect: {
-            enabled: false,
+            enabled: true,
             xPct: 19,
             yPct: 85,
             widthPct: 60,
             heightPct: 11,
             opacity: 9,
-            blurStrength: 4,
+            blurStrength: 9,
             color: '#ffffff',
         },
     });
@@ -160,8 +165,13 @@ const SubtitlePreviewPage: React.FC = () => {
             formData.append('srt_file', srtBlob, 'sub.srt');
             formData.append('font_size', subStyle.fontSize.toString());
             formData.append('color', subStyle.color);
-            formData.append('position', subStyle.position);
+            formData.append('alignment', subStyle.alignment.toString());
             formData.append('bg_opacity', subStyle.bgOpacity.toString());
+            formData.append('stroke_enabled', subStyle.strokeEnabled ? 'true' : 'false');
+            formData.append('stroke_color', subStyle.strokeColor);
+            formData.append('stroke_size', subStyle.strokeSize.toString());
+            formData.append('margin_v', subStyle.marginV.toString());
+            formData.append('margin_h', subStyle.marginH.toString());
             formData.append('padding_h', subStyle.paddingH.toString());
             formData.append('padding_v', subStyle.paddingV.toString());
             // Blur rectangle params
@@ -547,18 +557,105 @@ const SubtitlePreviewPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Position */}
+                                    {/* Vertical Margin */}
+                                    <div>
+                                        <div className="flex justify-between mb-1">
+                                            <label className="text-xs font-semibold text-text-primary">Vertical Margin</label>
+                                            <span className="text-xs text-text-secondary font-mono">{subStyle.marginV}px</span>
+                                        </div>
+                                        <input type="range" min={0} max={250} value={subStyle.marginV}
+                                            onChange={e => setSubStyle(s => ({ ...s, marginV: Number(e.target.value) }))}
+                                            className="w-full" />
+                                    </div>
+
+                                    {/* Text Stroke Section */}
+                                    <div className="pt-2 border-t border-border-primary space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-text-primary">Text Stroke</h3>
+                                                <p className="text-xs text-text-tertiary mt-0.5">Add an outline around the text</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setSubStyle(s => ({ ...s, strokeEnabled: !s.strokeEnabled }))}
+                                                className={`relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none ${subStyle.strokeEnabled ? 'bg-accent-primary' : 'bg-surface-primary border border-border-primary'
+                                                    }`}
+                                                aria-label="Toggle text stroke"
+                                            >
+                                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${subStyle.strokeEnabled ? 'translate-x-5' : 'translate-x-0'
+                                                    }`} />
+                                            </button>
+                                        </div>
+
+                                        {subStyle.strokeEnabled && (
+                                            <div className="space-y-3 pl-2 border-l-2 border-border-primary">
+                                                {/* Stroke Color */}
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-xs font-semibold text-text-primary">Stroke Color</label>
+                                                    <div className="flex items-center gap-2">
+                                                        {['#000000', '#ffffff', '#ff0000', '#0000ff'].map(c => (
+                                                            <button
+                                                                key={c}
+                                                                onClick={() => setSubStyle(s => ({ ...s, strokeColor: c }))}
+                                                                className={`w-6 h-6 rounded-full border border-border-primary transition-all ${subStyle.strokeColor === c ? 'scale-110 ring-2 ring-accent-primary ring-offset-1 ring-offset-bg-primary' : 'hover:scale-105'}`}
+                                                                style={{ background: c }}
+                                                                title={c}
+                                                            />
+                                                        ))}
+                                                        <input type="color" value={subStyle.strokeColor}
+                                                            onChange={e => setSubStyle(s => ({ ...s, strokeColor: e.target.value }))}
+                                                            className="w-6 h-6 rounded border-0 p-0 bg-transparent cursor-pointer ml-1"
+                                                            title="Custom stroke color" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Stroke Size */}
+                                                <div>
+                                                    <div className="flex justify-between mb-1">
+                                                        <label className="text-xs font-semibold text-text-primary">Stroke Size</label>
+                                                        <span className="text-xs text-text-secondary font-mono">{subStyle.strokeSize}px</span>
+                                                    </div>
+                                                    <input type="range" min={1} max={10} step={0.5} value={subStyle.strokeSize}
+                                                        onChange={e => setSubStyle(s => ({ ...s, strokeSize: Number(e.target.value) }))}
+                                                        className="w-full" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Horizontal Margin */}
+                                    <div>
+                                        <div className="flex justify-between mb-1">
+                                            <label className="text-xs font-semibold text-text-primary">Horizontal Margin</label>
+                                            <span className="text-xs text-text-secondary font-mono">{subStyle.marginH}px</span>
+                                        </div>
+                                        <input type="range" min={0} max={250} value={subStyle.marginH}
+                                            onChange={e => setSubStyle(s => ({ ...s, marginH: Number(e.target.value) }))}
+                                            className="w-full" />
+                                    </div>
+
+                                    {/* Position Grid */}
                                     <div className="flex items-center justify-between">
-                                        <label className="text-sm font-semibold text-text-primary">Position</label>
-                                        <div className="flex gap-2">
-                                            {(['bottom', 'top'] as const).map(p => (
+                                        <label className="text-sm font-semibold text-text-primary">Alignment</label>
+                                        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-surface-secondary border border-border-secondary">
+                                            {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(align => (
                                                 <button
-                                                    key={p}
-                                                    onClick={() => setSubStyle(s => ({ ...s, position: p }))}
-                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-all
-                            ${subStyle.position === p ? 'bg-accent-primary text-white' : 'bg-surface-primary text-text-secondary hover:text-text-primary'}`}
+                                                    key={align}
+                                                    onClick={() => setSubStyle(s => ({ ...s, alignment: align }))}
+                                                    className={`w-9 h-9 rounded flex items-center justify-center transition-all focus:outline-none
+                                                        ${subStyle.alignment === align ? 'bg-accent-primary text-white shadow-sm scale-105' : 'bg-surface-primary text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border-primary'}`}
+                                                    title={`Alignment ${align}`}
                                                 >
-                                                    {p === 'bottom' ? '⬇ Bottom' : '⬆ Top'}
+                                                    <span className="text-sm">
+                                                        {align === 7 && '↖'}
+                                                        {align === 8 && '⬆'}
+                                                        {align === 9 && '↗'}
+                                                        {align === 4 && '⬅'}
+                                                        {align === 5 && '●'}
+                                                        {align === 6 && '➡'}
+                                                        {align === 1 && '↙'}
+                                                        {align === 2 && '⬇'}
+                                                        {align === 3 && '↘'}
+                                                    </span>
                                                 </button>
                                             ))}
                                         </div>

@@ -93,6 +93,8 @@ def write_ass_from_srt(
     margin_v: int,
     margin_h: int = 24,
     outline_colour: str = "&H00000000&",
+    dual_layer: bool = False,
+    stroke_size: float = 1.5,
 ):
     with open(srt_path, "r", encoding="utf-8-sig", errors="replace") as f:
         srt_text = f.read()
@@ -101,24 +103,54 @@ def write_ass_from_srt(
     if not dialogues:
         raise ValueError("No subtitle lines parsed from SRT")
 
-    header = (
-        "[Script Info]\n"
-        "ScriptType: v4.00+\n"
-        f"PlayResX: 384\n"
-        f"PlayResY: 288\n\n"
-        "[V4+ Styles]\n"
-        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
-        "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
-        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Default,{font_name},{font_size},{primary_colour},&H000000FF,{outline_colour},{back_colour},"
-        f"0,0,0,0,100,100,0,0,{border_style},{outline:.1f},{shadow:.1f},{alignment},{margin_h},{margin_h},{margin_v},0\n\n"
-        "[Events]\n"
-        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
-    )
-    lines = [
-        f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}"
-        for start, end, text in dialogues
-    ]
+    if dual_layer:
+        # Dual-Layer ASS Hack
+        # Style LayerText: Text has Outline (stroke_size), but no BorderStyle=3
+        # Style LayerBox: BorderStyle=3 box with fully transparent text 
+        header = (
+            "[Script Info]\n"
+            "ScriptType: v4.00+\n"
+            f"PlayResX: 384\n"
+            f"PlayResY: 288\n\n"
+            "[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
+            "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+            "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+            f"Style: LayerBox,{font_name},{font_size},&HFF000000,&H000000FF,{outline_colour},{back_colour},"
+            f"0,0,0,0,100,100,0,0,3,{outline:.1f},{shadow:.1f},{alignment},{margin_h},{margin_h},{margin_v},0\n"
+            f"Style: LayerText,{font_name},{font_size},{primary_colour},&H000000FF,{outline_colour},&H00000000,"
+            f"0,0,0,0,100,100,0,0,1,{stroke_size:.1f},{shadow:.1f},{alignment},{margin_h},{margin_h},{margin_v},0\n\n"
+            "[Events]\n"
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        )
+        lines = []
+        for start, end, text in dialogues:
+            # Layer 0: The fully transparent text that forces ASS to render the opaque padding box
+            transparent_text = "{\\1a&HFF&}" + text
+            lines.append(f"Dialogue: 0,{start},{end},LayerBox,,0,0,0,,{transparent_text}")
+            # Layer 1: The actual subtitle text with an outline (renders natively exactly over the box)
+            lines.append(f"Dialogue: 1,{start},{end},LayerText,,0,0,0,,{text}")
+    else:
+        # Standard behaviour
+        header = (
+            "[Script Info]\n"
+            "ScriptType: v4.00+\n"
+            f"PlayResX: 384\n"
+            f"PlayResY: 288\n\n"
+            "[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
+            "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+            "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+            f"Style: Default,{font_name},{font_size},{primary_colour},&H000000FF,{outline_colour},{back_colour},"
+            f"0,0,0,0,100,100,0,0,{border_style},{outline:.1f},{shadow:.1f},{alignment},{margin_h},{margin_h},{margin_v},0\n\n"
+            "[Events]\n"
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        )
+        lines = [
+            f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}"
+            for start, end, text in dialogues
+        ]
+        
     ass_content = header + "\n".join(lines) + "\n"
 
     # Write with UTF-8 BOM for better ffmpeg/libass behavior on Windows.
