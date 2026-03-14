@@ -356,22 +356,66 @@ const TikTokChangerPage: React.FC = () => {
       form.append('blur_px', String(blurPx));
       form.append('bg_color', bgColor);
 
+      // ─── Generate Text Overlay Image ───
+      const targetW = 1080;
+      const targetH = 1920;
+      const overlayCanvas = document.createElement('canvas');
+      overlayCanvas.width = targetW;
+      overlayCanvas.height = targetH;
+      const octx = overlayCanvas.getContext('2d');
+      if (octx && layers.length > 0) {
+        layers.forEach(layer => {
+          const px = (layer.xPct / 100) * targetW;
+          const py = (layer.yPct / 100) * targetH;
+
+          octx.save();
+          const scale = targetH / CANVAS_H;
+          const fontSize = Math.round(layer.fontSize * scale);
+          const strokeWidth = layer.strokeWidth * scale;
+
+          const style = [
+            layer.italic ? 'italic' : '',
+            layer.bold   ? 'bold'   : '',
+            `${fontSize}px`,
+            `"${layer.fontFamily}", sans-serif`,
+          ].filter(Boolean).join(' ');
+          octx.font = style;
+          octx.fillStyle = layer.color;
+          octx.textAlign = 'left';
+
+          if (layer.shadow) {
+            octx.shadowColor   = 'rgba(0,0,0,0.85)';
+            octx.shadowBlur    = 8 * scale;
+            octx.shadowOffsetX = 2 * scale;
+            octx.shadowOffsetY = 2 * scale;
+          }
+
+          layer.text.split('\n').forEach((line, i) => {
+            const lineY = py + i * fontSize * 1.35;
+            // Draw stroke first (behind fill)
+            if (layer.stroke && strokeWidth > 0) {
+              octx.save();
+              octx.shadowBlur = 0;
+              octx.shadowOffsetX = 0;
+              octx.shadowOffsetY = 0;
+              octx.strokeStyle = layer.strokeColor;
+              octx.lineWidth   = strokeWidth * 2; // lineWidth is total, stroke is half outside
+              octx.lineJoin    = 'round';
+              octx.strokeText(line, px, lineY);
+              octx.restore();
+            }
+            octx.fillText(line, px, lineY);
+          });
+          octx.restore();
+        });
+
+        const overlayBlob = await new Promise<Blob | null>(res => overlayCanvas.toBlob(res, 'image/png'));
+        if (overlayBlob) {
+          form.append('text_overlay', overlayBlob, 'overlay.png');
+        }
+      }
+
       // Convert layers to backend format (xPct/yPct already in %)
-      const exportLayers = layers.map(l => ({
-        text: l.text,
-        xPct: l.xPct,
-        yPct: l.yPct,
-        fontSize: l.fontSize,
-        fontFamily: l.fontFamily,
-        color: l.color,
-        bold: l.bold,
-        italic: l.italic,
-        shadow: l.shadow,
-        stroke: l.stroke,
-        strokeColor: l.strokeColor,
-        strokeWidth: l.strokeWidth,
-      }));
-      form.append('text_layers', JSON.stringify(exportLayers));
 
       const res = await fetch(`${API_BASE}/api/tiktok/export/start`, {
         method: 'POST',

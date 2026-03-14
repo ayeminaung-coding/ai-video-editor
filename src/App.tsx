@@ -22,6 +22,7 @@ import SrtTranslatorPage from './SrtTranslatorPage';
 import SubtitlePreviewPage from './SubtitlePreviewPage';
 import MetadataRemoverPage from './MetadataRemoverPage';
 import TikTokChangerPage from './TikTokChangerPage';
+import VideoAutomationPage from './VideoAutomationPage';
 import ThumbnailCoverPage from './ThumbnailCoverPage';
 import SettingsModal from './components/SettingsModal';
 
@@ -173,6 +174,10 @@ const App: React.FC = () => {
                   <Route
                     path="/tiktok-changer"
                     element={<TikTokChangerPage />}
+                  />
+                  <Route
+                    path="/video-automation"
+                    element={<VideoAutomationPage />}
                   />
                   <Route
                     path="/thumbnail-cover"
