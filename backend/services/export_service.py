@@ -74,7 +74,7 @@ def _build_blur_rect_filter(
         radius = blur_rect_blur
         frag = (
             f"[v_in]split[orig][for_blur];"
-            f"[for_blur]crop={w_expr}:{h_expr}:{x_expr}:{y_expr},boxblur={radius}:{radius}[blurred];"
+            f"[for_blur]crop={w_expr}:{h_expr}:{x_expr}:{y_expr},boxblur=luma_radius={radius}:luma_power=1:chroma_radius={radius}:chroma_power=1[blurred];"
             f"[orig][blurred]overlay=x={overlay_x_expr}:y={overlay_y_expr}[blur_applied];"
             f"[blur_applied]drawbox=x={x_expr}:y={y_expr}:w={w_expr}:h={h_expr}"
             f":color={draw_color}:t=fill[v_out]"
@@ -90,7 +90,7 @@ def run_export_task(
     out_path: str,
     font_size: int,
     color: str,
-    position: str,
+    alignment: int,
     bg_opacity: int,
     font_name: str,
     font_dir_param: str | None,
@@ -103,6 +103,12 @@ def run_export_task(
     blur_rect_opacity: int = 9,
     blur_rect_blur: int = 4,
     blur_rect_color: str = "#ffffff",
+    # Text stroke
+    stroke_enabled: bool = False,
+    stroke_color: str = "#000000",
+    stroke_size: float = 1.0,
+    margin_v: int = 15,
+    margin_h: int = 15,
     # Subtitle padding (pixels)
     padding_h: int = 14,
     padding_v: int = 6,
@@ -120,20 +126,34 @@ def run_export_task(
         else:
             primary_colour = "&H00FFFFFF&"
             
-        alignment = 2 if position == "bottom" else 8
-        margin_v = 15 if position == "bottom" else 30
-        
         # Build subtitle box/outline styles.
+        dual_layer = False
+        stroke_ass_color = "&H00000000&"
+        
+        if stroke_enabled and stroke_color:
+            sc_hex = stroke_color.replace("#", "")
+            if len(sc_hex) == 6:
+                sr, sg, sb = sc_hex[0:2], sc_hex[2:4], sc_hex[4:6]
+                stroke_ass_color = f"&H00{sb}{sg}{sr}&"
+
         if bg_opacity == 0:
             border_style = 1
-            outline = 1.5
+            if stroke_enabled:
+                outline = float(stroke_size)
+            else:
+                outline = 1.5
             shadow = 1.0
-            back_colour = "&H00000000&"
+            back_colour = stroke_ass_color if stroke_enabled else "&H00000000&"
         else:
             # Alpha is 00 (opaque) to FF (transparent)
             alpha_val = int((100 - bg_opacity) * 255 / 100)
             alpha_hex = f"{alpha_val:02X}"
             back_colour = f"&H{alpha_hex}000000&"
+            
+            if stroke_enabled:
+                # Need dual layer ASS hack because BorderStyle=3 (Box) ignores outline strokes natively
+                dual_layer = True
+                
             border_style = 3
             # In ASS BorderStyle=3, the Outline value is the box border/padding thickness.
             # Use the larger of h/v padding so the box looks spacious on all sides.
@@ -155,9 +175,12 @@ def run_export_task(
             back_colour=back_colour,
             alignment=alignment,
             margin_v=margin_v,
-            margin_h=24,
+            margin_h=margin_h,
             # Make the box border match the box fill (no visible ring around the subtitle box)
-            outline_colour=back_colour if border_style == 3 else "&H00000000&",
+            outline_colour=back_colour if border_style == 3 else stroke_ass_color,
+            # Dual Layer hack configurations
+            dual_layer=dual_layer,
+            stroke_size=float(stroke_size) if dual_layer else outline,
         )
 
         # Build the ASS subtitle filter

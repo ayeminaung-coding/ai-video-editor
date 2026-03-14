@@ -67,7 +67,7 @@ const TikTokChangerPage: React.FC = () => {
 
   // ── Canvas settings ────────────────────────────────────────────────────────
   const [bgMode, setBgMode]   = useState<BgMode>('blur');
-  const [blurPx, setBlurPx]   = useState(20);
+  const [blurPx, setBlurPx]   = useState(34);
   const [bgColor, setBgColor] = useState('#1a1a2e');
 
   // ── Text layers ────────────────────────────────────────────────────────────

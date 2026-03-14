@@ -58,25 +58,63 @@ const SubtitleOverlay: React.FC<{
             {/* Translated subtitle text */}
             {activeLine && (
                 <div
-                    className={`absolute left-0 right-0 flex justify-center pointer-events-none px-4 ${style.position === 'bottom' ? 'bottom-8' : 'top-4'}`}
-                    style={{ zIndex: 10 }}
+                    className="absolute pointer-events-none px-4 flex"
+                    style={{ 
+                        zIndex: 10,
+                        inset: 0,
+                        alignItems: style.alignment >= 7 ? 'flex-start' : style.alignment >= 4 ? 'center' : 'flex-end',
+                        justifyContent: style.alignment % 3 === 1 ? 'flex-start' : style.alignment % 3 === 2 ? 'center' : 'flex-end',
+                        paddingBottom: style.alignment <= 3 ? `${style.marginV}px` : undefined,
+                        paddingTop: style.alignment >= 7 ? `${style.marginV}px` : undefined,
+                        paddingLeft: style.alignment % 3 === 1 ? `${style.marginH}px` : undefined,
+                        paddingRight: style.alignment % 3 === 0 ? `${style.marginH}px` : undefined,
+                    }}
                 >
                     <div
                         style={{
                             background: `rgba(0,0,0,${bgAlpha})`,
-                            color: style.color,
                             fontSize: `${style.fontSize}px`,
                             lineHeight: 1.4,
                             padding: `${style.paddingV}px ${style.paddingH}px`,
                             borderRadius: '6px',
                             textAlign: 'center',
                             maxWidth: '90%',
-                            textShadow: '0 1px 3px rgba(0,0,0,0.8)',
                             fontFamily: 'inherit',
-                            whiteSpace: 'pre-line',
                         }}
                     >
-                        {activeLine.text}
+                        <span style={{
+                            display: 'inline-grid',
+                            gridTemplateColumns: '1fr',
+                            gridTemplateRows: '1fr',
+                            alignItems: 'center',
+                            justifyItems: 'center'
+                        }}>
+                            {/* Background Stroke */}
+                            {style.strokeEnabled && (
+                                <span style={{
+                                    gridColumn: 1,
+                                    gridRow: 1,
+                                    WebkitTextStroke: `${style.strokeSize * 2}px ${style.strokeColor}`,
+                                    color: 'transparent',
+                                    zIndex: 0,
+                                    whiteSpace: 'pre-line',
+                                }}>
+                                    {activeLine.text}
+                                </span>
+                            )}
+                            {/* Foreground Fill */}
+                            <span style={{
+                                gridColumn: 1,
+                                gridRow: 1,
+                                color: style.color,
+                                WebkitTextStroke: '0px',
+                                zIndex: 1,
+                                textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                                whiteSpace: 'pre-line',
+                            }}>
+                                {activeLine.text}
+                            </span>
+                        </span>
                     </div>
                 </div>
             )}

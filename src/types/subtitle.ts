@@ -24,7 +24,12 @@ export interface SubStyle {
     fontSize: number;
     color: string;
     bgOpacity: number;
-    position: 'bottom' | 'top';
+    strokeEnabled: boolean;
+    strokeColor: string;
+    strokeSize: number;
+    alignment: number;
+    marginV: number;
+    marginH: number;
     /** Horizontal padding (left + right) applied around subtitle text, in pixels */
     paddingH: number;
     /** Vertical padding (top + bottom) applied around subtitle text, in pixels */
