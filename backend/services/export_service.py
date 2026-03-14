@@ -74,7 +74,7 @@ def _build_blur_rect_filter(
         radius = blur_rect_blur
         frag = (
             f"[v_in]split[orig][for_blur];"
-            f"[for_blur]crop={w_expr}:{h_expr}:{x_expr}:{y_expr},boxblur={radius}:{radius}[blurred];"
+            f"[for_blur]crop={w_expr}:{h_expr}:{x_expr}:{y_expr},boxblur=luma_radius={radius}:luma_power=1:chroma_radius={radius}:chroma_power=1[blurred];"
             f"[orig][blurred]overlay=x={overlay_x_expr}:y={overlay_y_expr}[blur_applied];"
             f"[blur_applied]drawbox=x={x_expr}:y={y_expr}:w={w_expr}:h={h_expr}"
             f":color={draw_color}:t=fill[v_out]"

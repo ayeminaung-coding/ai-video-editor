@@ -200,7 +200,7 @@ def _run_tiktok_export(
             
             # Sub-scale constants for proxy blur
             bw, bh = TARGET_W // 4, TARGET_H // 4  # 270, 480
-            mapped_blur = max(1, blur_px // 4)
+            mapped_blur = max(1, blur_px)
             
             bg_f = (
                 f"[0:v]scale={bw}:{bh}:force_original_aspect_ratio=increase:flags=fast_bilinear,"
@@ -347,7 +347,7 @@ def _run_tiktok_export(
 async def start_tiktok_export(
     video_file: UploadFile = File(...),
     bg_mode: str = Form("blur"),     # "blur" | "color"
-    blur_px: int = Form(20),
+    blur_px: int = Form(34),
     bg_color: str = Form("#000000"),
     text_layers: str = Form("[]"),   # JSON array
     ui_canvas_w: int = Form(405),    # Frontend preview dimensions
