@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
   const toggleMobile = () => setMobileOpen(prev => !prev);
   const closeMobile = () => setMobileOpen(false);
 
-  const quickActions = [
+  const tools = [
     { path: '/translate', label: 'Translate', icon: '🌏' },
     { path: '/srt-translator', label: 'SRT Translator', icon: '🔤' },
     { path: '/srt-exporter', label: 'SRT Exporter', icon: '📝' },
@@ -34,14 +34,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/thumbnail-cover', label: 'Thumbnail Cover', icon: '🖼️' },
     { path: '/upload', label: 'Upload', icon: '📤' },
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-  ];
-
-  const tools = [
-    { path: '/creator', label: 'Creator Tools', icon: '🧰' },
-    { path: '/creator/script-helper', label: 'Script Helper', icon: '📜' },
-    { path: '/creator/workflows', label: 'Workflows', icon: '🧭' },
-    { path: '/creator/workflow-board', label: 'Workflow Board', icon: '🗂' },
-    { path: '/creator/resources', label: 'Resources', icon: '📂' },
   ];
 
   const NavItem = ({
@@ -147,24 +139,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
               </p>
             )}
             <div className="space-y-0.5">
-              {quickActions.map(a => (
+              {tools.map(a => (
                 <NavItem key={a.path} {...a} onClick={closeMobile} />
-              ))}
-            </div>
-          </div>
-
-          <div className="mx-3 my-1 border-t border-border-primary" />
-
-          {/* Creator Tools section */}
-          <div className="px-2 py-1">
-            {desktopOpen && (
-              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider px-2 mb-1.5">
-                Creator Tools
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {tools.map(t => (
-                <NavItem key={t.path} {...t} onClick={closeMobile} />
               ))}
             </div>
           </div>

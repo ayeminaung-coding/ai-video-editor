@@ -2,13 +2,13 @@
 // Loads a local video + SRT file, converts SRT→VTT, shows subtitles on video
 // Supports timing offset, subtitle style controls, blur-rectangle, and export back to SRT
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { SubLine, SubStyle, BlurRectStyle } from './types/subtitle';
-import { parseSrt, parsePlainTextSubtitles, linesToVtt, linesToSrt, downloadText, formatTime, secToSrtTime, hmsToSec } from './utils/subtitleUtils';
 import DropZone from './components/DropZone';
-import VideoPlayer from './components/VideoPlayer';
 import SubtitleOverlay from './components/SubtitleOverlay';
+import VideoPlayer from './components/VideoPlayer';
+import { SubLine, SubStyle } from './types/subtitle';
+import { downloadText, formatTime, hmsToSec, linesToSrt, linesToVtt, parsePlainTextSubtitles, parseSrt, secToSrtTime } from './utils/subtitleUtils';
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -36,10 +36,10 @@ const SubtitlePreviewPage: React.FC = () => {
         paddingV: 10,
         blurRect: {
             enabled: true,
-            xPct: 19,
-            yPct: 85,
-            widthPct: 60,
-            heightPct: 11,
+            xPct: 11,
+            yPct: 86,
+            widthPct: 79,
+            heightPct: 13,
             opacity: 9,
             blurStrength: 9,
             color: '#ffffff',

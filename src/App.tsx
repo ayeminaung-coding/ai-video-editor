@@ -3,16 +3,12 @@
 
 import React, { useState } from 'react';
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import CreatorToolsPage from './CreatorToolsPage';
-import CreatorWorkflowPage from './CreatorWorkflowPage';
 import DashboardPage from './DashboardPage';
 import EditorPage from './EditorPage';
 import Header from './Header';
 import MetadataRemoverPage from './MetadataRemoverPage';
 import PreviewPage from './PreviewPage';
 import QueueOcrPage from './QueueOcrPage';
-import ResourceFinderPage from './ResourceFinderPage';
-import ScriptHelperPage from './ScriptHelperPage';
 import Sidebar from './Sidebar';
 import SrtExporterPage from './SrtExporterPage';
 import SrtTranslatorPage from './SrtTranslatorPage';
@@ -24,7 +20,6 @@ import TranslatePage from './TranslatePage';
 import UploadPage from './UploadPage';
 import VideoAutomationPage from './VideoAutomationPage';
 import VideoSplitterPage from './VideoSplitterPage';
-import WorkflowsPage from './WorkflowsPage';
 import SettingsModal from './components/SettingsModal';
 import { SettingsProvider } from './contexts/SettingsContext';
 
@@ -132,26 +127,6 @@ const App: React.FC = () => {
                         onExport={handleExport}
                       />
                     }
-                  />
-                  <Route
-                    path="/creator"
-                    element={<CreatorToolsPage />}
-                  />
-                  <Route
-                    path="/creator/script-helper"
-                    element={<ScriptHelperPage />}
-                  />
-                  <Route
-                    path="/creator/workflows"
-                    element={<WorkflowsPage />}
-                  />
-                  <Route
-                    path="/creator/workflow-board"
-                    element={<CreatorWorkflowPage />}
-                  />
-                  <Route
-                    path="/creator/resources"
-                    element={<ResourceFinderPage />}
                   />
                   <Route
                     path="/translate"
