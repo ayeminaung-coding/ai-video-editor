@@ -29,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle }) => {
     { path: '/metadata-remover', label: 'Metadata Remover', icon: '🧹' },
     { path: '/tiktok-changer', label: 'TikTok Changer', icon: '🎵' },
     { path: '/video-splitter', label: 'Video Splitter', icon: '✂️' },
+    { path: '/queue-encoder', label: 'Queue Encoder + Subs', icon: '📦' },
     { path: '/queue-ocr', label: 'Queue OCR', icon: '📋' },
     { path: '/video-automation', label: 'Video Automation', icon: '🤖' },
     { path: '/thumbnail-cover', label: 'Thumbnail Cover', icon: '🖼️' },

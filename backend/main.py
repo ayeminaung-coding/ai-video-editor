@@ -25,6 +25,7 @@ from routers.metadata import router as metadata_router
 from routers.tiktok_changer import router as tiktok_changer_router
 from routers.video_splitter import router as video_splitter_router
 from routers.queue_ocr import router as queue_ocr_router
+from routers.queue_encoder import router as queue_encoder_router
 
 # Configure logging
 logging.basicConfig(
@@ -98,6 +99,7 @@ app.include_router(metadata_router)
 app.include_router(tiktok_changer_router)
 app.include_router(video_splitter_router)
 app.include_router(queue_ocr_router)
+app.include_router(queue_encoder_router)
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────

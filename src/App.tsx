@@ -8,6 +8,7 @@ import EditorPage from './EditorPage';
 import Header from './Header';
 import MetadataRemoverPage from './MetadataRemoverPage';
 import PreviewPage from './PreviewPage';
+import QueueEncoderPage from './QueueEncoderPage';
 import QueueOcrPage from './QueueOcrPage';
 import Sidebar from './Sidebar';
 import SrtExporterPage from './SrtExporterPage';
@@ -147,6 +148,10 @@ const App: React.FC = () => {
                   <Route
                     path="/metadata-remover"
                     element={<MetadataRemoverPage />}
+                  />
+                  <Route
+                    path="/queue-encoder"
+                    element={<QueueEncoderPage />}
                   />
                   <Route
                     path="/tiktok-changer"

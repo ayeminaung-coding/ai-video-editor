@@ -2,6 +2,7 @@
 import os
 import subprocess
 import re
+import typing
 from services.subtitle_utils import write_ass_from_srt
 
 from services.job_store import create_job as _create_job, get_job as _get_job, pop_job as _pop_job
@@ -120,11 +121,16 @@ def run_export_task(
     # Subtitle padding (pixels)
     padding_h: int = 14,
     padding_v: int = 6,
+    progress_cb: typing.Optional[typing.Callable[[float], None]] = None,
 ):
     job = get_export_job(job_id)
-    if not job: 
-        return
-    
+
+    def _set_progress(val: float):
+        if job:
+            job["progress"] = min(100.0, max(0.0, val))
+        if progress_cb:
+            progress_cb(val)
+
     try:
         # ASS colors are AABBGGRR. Here we set alpha=00 (opaque) for primary text.
         color_hex = color.replace("#", "")
@@ -273,17 +279,20 @@ def run_export_task(
                 h, m, s = match.groups()
                 current_time = int(h) * 3600 + int(m) * 60 + float(s)
                 progress = (current_time / total_duration) * 100.0
-                job["progress"] = min(99.0, max(0.0, progress))
-                
+                _set_progress(min(99.0, max(0.0, progress)))
+
         process.wait()
-        
+
         if process.returncode == 0:
-            job["status"] = "done"
-            job["progress"] = 100.0
+            if job:
+                job["status"] = "done"
+            _set_progress(100.0)
         else:
             tail = "\n".join(ffmpeg_tail[-8:])
             raise Exception(f"FFmpeg returned non-zero exit code {process.returncode}. Last log lines:\n{tail}")
-            
+
     except Exception as e:
-        job["status"] = "error"
-        job["error"] = str(e)
+        if job:
+            job["status"] = "error"
+            job["error"] = str(e)
+        raise

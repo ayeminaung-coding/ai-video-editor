@@ -80,3 +80,52 @@ def process_ocr_video(
         _set_progress(0)
         logger.error(f"Error processing video {video_id}: {e}")
         raise
+
+
+def process_encoder_video(
+    job_id: str,
+    tmpdir: str,
+    video_path: str,
+    srt_path: str,
+    out_path: str,
+    style_opts: dict,
+    progress_cb=None,
+    original_filename: str = None,
+):
+    from services.export_service import run_export_task
+
+    job = get_current_job()
+
+    def _set_progress(pct: float) -> None:
+        clamped = max(0.0, min(100.0, pct))
+        if job:
+            job.meta['progress'] = clamped
+            job.save_meta()
+        if progress_cb:
+            progress_cb(clamped)
+
+    logger.info(f'Starting Encoder task for {job_id}')
+    _set_progress(2.0)
+
+    try:
+        run_export_task(
+            job_id=job_id,
+            tmpdir=tmpdir,
+            video_path=video_path,
+            srt_path=srt_path,
+            out_path=out_path,
+            progress_cb=_set_progress,
+            **style_opts
+        )
+
+        _set_progress(100.0)
+        logger.info(f'Finished Encoder task for {job_id}')
+
+        return {
+            'job_id': job_id,
+            'out_path': out_path,
+            'original_filename': original_filename,
+        }
+    except Exception as e:
+        logger.error(f'Error in Encoder task {job_id}: {e}')
+        raise
