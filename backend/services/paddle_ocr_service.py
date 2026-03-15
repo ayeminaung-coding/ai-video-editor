@@ -227,13 +227,15 @@ def _ocr_frame(img: np.ndarray, lang: str) -> str:
 
     result = None
     try:
-        result = paddle.ocr(img, cls=False)
+        with _paddle_model_lock:
+            result = paddle.ocr(img, cls=False)
     except Exception as e:
         first_error = str(e)
         logger.debug(f"PaddleOCR ocr(cls=False) failed: {e}")
         try:
             # Retry with default settings (might trigger cls warning if disabled in init)
-            result = paddle.ocr(img)
+            with _paddle_model_lock:
+                result = paddle.ocr(img)
         except Exception as e2:
             logger.warning(f"PaddleOCR all variants failed. First error: {first_error}. Second error: {e2}")
             return ""

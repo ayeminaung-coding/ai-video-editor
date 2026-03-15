@@ -5,6 +5,8 @@ import asyncio
 from typing import List, Any
 from fastapi import APIRouter, File, UploadFile, HTTPException
 
+from config import settings
+
 try:
     import redis  # type: ignore
     from rq import Queue  # type: ignore
@@ -71,6 +73,8 @@ async def _run_local_job(local_job_id: str, video_path: str, video_id: str) -> N
             logger.exception("Local OCR job failed: %s", local_job_id)
             _local_jobs[local_job_id]["status"] = "failed"
             _local_jobs[local_job_id]["error"] = str(exc)
+@router.post("/upload")
+async def queue_ocr_videos(files: List[UploadFile] = File(...)):
     queue = None
     use_redis = True
     try:
@@ -82,7 +86,7 @@ async def _run_local_job(local_job_id: str, video_path: str, video_id: str) -> N
     jobs_info = []
     
     # Needs a unified uploads directory 
-    upload_dir = "uploads/queue_ocr"
+    upload_dir = os.path.join(settings.upload_dir, "queue_ocr")
     os.makedirs(upload_dir, exist_ok=True)
     
     for file in files:
