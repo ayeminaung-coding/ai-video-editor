@@ -34,6 +34,40 @@ const BlurRectOverlay: React.FC<{ style: SubStyle }> = ({ style }) => {
     return <div style={positionStyle} />;
 };
 
+// ─── Watermark Overlay ───────────────────────────────────────────────────────
+
+const WatermarkOverlay: React.FC<{ style: SubStyle }> = ({ style }) => {
+    const wm = style.watermark;
+    if (!wm || !wm.enabled) return null;
+
+    const fillOpacity = wm.opacity / 100;
+    
+    // Convert hex color to rgba
+    const hex = wm.color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const g = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
+    const textColor = `rgba(${r},${g},${b},${fillOpacity})`;
+
+    const positionStyle: React.CSSProperties = {
+        position: 'absolute',
+        left: `${wm.xPct}%`,
+        top: `${wm.yPct}%`,
+        color: textColor,
+        fontSize: `${wm.fontSize}px`,
+        fontWeight: 'bold',
+        pointerEvents: 'none',
+        zIndex: 20, // Above everything
+        transition: 'all 0.15s ease',
+        whiteSpace: 'nowrap',
+        // In the example, it has a slight black stroke or shadow for visibility
+        WebkitTextStroke: '1px rgba(0,0,0,0.5)',
+        textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+    };
+
+    return <div style={positionStyle}>{wm.text}</div>;
+};
+
 // ─── Subtitle Text Overlay ────────────────────────────────────────────────────
 
 const SubtitleOverlay: React.FC<{
@@ -54,6 +88,9 @@ const SubtitleOverlay: React.FC<{
         <>
             {/* Blur rectangle to cover original/hardcoded subtitles */}
             <BlurRectOverlay style={style} />
+            
+            {/* Watermark Overlay */}
+            <WatermarkOverlay style={style} />
 
             {/* Translated subtitle text */}
             {activeLine && (

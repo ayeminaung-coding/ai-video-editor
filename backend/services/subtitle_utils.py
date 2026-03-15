@@ -95,6 +95,13 @@ def write_ass_from_srt(
     outline_colour: str = "&H00000000&",
     dual_layer: bool = False,
     stroke_size: float = 1.5,
+    watermark_enabled: bool = False,
+    watermark_text: str = "",
+    watermark_x_pct: float = 10.0,
+    watermark_y_pct: float = 10.0,
+    watermark_font_size: int = 24,
+    watermark_color: str = "#ffffff",
+    watermark_opacity: int = 80,
 ):
     with open(srt_path, "r", encoding="utf-8-sig", errors="replace") as f:
         srt_text = f.read()
@@ -151,6 +158,35 @@ def write_ass_from_srt(
             for start, end, text in dialogues
         ]
         
+    if watermark_enabled and watermark_text.strip():
+        wm_hex = watermark_color.lstrip("#")
+        if len(wm_hex) != 6:
+            wm_hex = "FFFFFF"
+
+        # ASS color is BBGGRR, alpha is inverse opacity (00 opaque, FF transparent).
+        rr, gg, bb = wm_hex[0:2], wm_hex[2:4], wm_hex[4:6]
+        wm_ass_color = f"&H{bb}{gg}{rr}&"
+        wm_alpha = int((100 - max(0, min(100, watermark_opacity))) * 255 / 100)
+        wm_ass_alpha = f"&H{wm_alpha:02X}&"
+        wm_x = max(0, min(100, watermark_x_pct)) * 3.84
+        wm_y = max(0, min(100, watermark_y_pct)) * 2.88
+        wm_text = escape_ass_text(watermark_text)
+
+        # Add a dedicated watermark style and a full-duration dialogue line.
+        lines.insert(0, (
+            f"Dialogue: 5,0:00:00.00,9:59:59.99,Watermark,,0,0,0,,"
+            f"{{\\an7\\pos({wm_x:.1f},{wm_y:.1f})\\fs{int(max(8, watermark_font_size))}"
+            f"\\c{wm_ass_color}\\alpha{wm_ass_alpha}\\bord2\\3c&H000000&\\shad1}}{wm_text}"
+        ))
+
+        style_line = (
+            f"Style: Watermark,{font_name},{int(max(8, watermark_font_size))},&H00FFFFFF&,"
+            f"&H000000FF&,&H00000000&,&H00000000&,0,0,0,0,100,100,0,0,1,2,1,7,10,10,10,0"
+        )
+        if "[Events]" in header:
+            style_insert_at = header.find("[Events]")
+            header = header[:style_insert_at] + style_line + "\n" + header[style_insert_at:]
+
     ass_content = header + "\n".join(lines) + "\n"
 
     # Write with UTF-8 BOM for better ffmpeg/libass behavior on Windows.

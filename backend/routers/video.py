@@ -294,9 +294,17 @@ async def start_export_video(
     blur_rect_y_pct: float = Form(85.0),
     blur_rect_width_pct: float = Form(60.0),
     blur_rect_height_pct: float = Form(11.0),     # height % of video height
-    blur_rect_opacity: int = Form(9),             # 0–100
-    blur_rect_blur: int = Form(4),                # blur radius px 0–30
+    blur_rect_opacity: int = Form(21),            # 0–100
+    blur_rect_blur: int = Form(13),               # blur radius px 0–30
     blur_rect_color: str = Form("#ffffff"),       # hex fill color
+    # ── Watermark params ──────────────────────────────────────────────────────
+    watermark_enabled: str = Form("false"),
+    watermark_text: str = Form("@DramaSubsTV"),
+    watermark_x_pct: float = Form(10.0),
+    watermark_y_pct: float = Form(10.0),
+    watermark_font_size: int = Form(40),
+    watermark_color: str = Form("#ffffff"),
+    watermark_opacity: int = Form(80),
     # ── Text Stroke ───────────────────────────────────────────────────────────
     stroke_enabled: str = Form("false"),
     stroke_color: str = Form("#000000"),
@@ -374,6 +382,14 @@ async def start_export_video(
         blur_rect_opacity,
         blur_rect_blur,
         blur_rect_color,
+        # watermark
+        watermark_enabled.lower() == "true",
+        watermark_text,
+        watermark_x_pct,
+        watermark_y_pct,
+        watermark_font_size,
+        watermark_color,
+        watermark_opacity,
         # stroke
         stroke_enabled.lower() == "true",
         stroke_color,

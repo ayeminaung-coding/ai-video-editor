@@ -20,6 +20,16 @@ export interface BlurRectStyle {
     position?: 'bottom' | 'middle' | 'top';
 }
 
+export interface WatermarkStyle {
+    enabled: boolean;
+    text: string;
+    xPct: number;
+    yPct: number;
+    fontSize: number;
+    color: string;
+    opacity: number;
+}
+
 export interface SubStyle {
     fontSize: number;
     color: string;
@@ -35,4 +45,5 @@ export interface SubStyle {
     /** Vertical padding (top + bottom) applied around subtitle text, in pixels */
     paddingV: number;
     blurRect: BlurRectStyle;
+    watermark?: WatermarkStyle;
 }

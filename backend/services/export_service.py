@@ -100,9 +100,17 @@ def run_export_task(
     blur_rect_y_pct: float = 85.0,
     blur_rect_width_pct: float = 60.0,
     blur_rect_height_pct: float = 11.0,
-    blur_rect_opacity: int = 9,
-    blur_rect_blur: int = 4,
+    blur_rect_opacity: int = 21,
+    blur_rect_blur: int = 13,
     blur_rect_color: str = "#ffffff",
+    # Watermark
+    watermark_enabled: bool = False,
+    watermark_text: str = "@DramaSubsTV",
+    watermark_x_pct: float = 10.0,
+    watermark_y_pct: float = 10.0,
+    watermark_font_size: int = 40,
+    watermark_color: str = "#ffffff",
+    watermark_opacity: int = 80,
     # Text stroke
     stroke_enabled: bool = False,
     stroke_color: str = "#000000",
@@ -181,6 +189,14 @@ def run_export_task(
             # Dual Layer hack configurations
             dual_layer=dual_layer,
             stroke_size=float(stroke_size) if dual_layer else outline,
+            # Watermark burned via ASS for stability on Windows (avoids drawtext crashes)
+            watermark_enabled=watermark_enabled,
+            watermark_text=watermark_text,
+            watermark_x_pct=watermark_x_pct,
+            watermark_y_pct=watermark_y_pct,
+            watermark_font_size=watermark_font_size,
+            watermark_color=watermark_color,
+            watermark_opacity=watermark_opacity,
         )
 
         # Build the ASS subtitle filter
@@ -189,8 +205,11 @@ def run_export_task(
             ass_filter += f":fontsdir='{font_dir_param}'"
 
         # ── Build video filter chain ──────────────────────────────────────────
+        filter_chain = []
+        current_in = "[0:v]"
+        next_id = 1
+
         if blur_rect_enabled:
-            # Blur rect runs first, then subtitles are burned on top.
             blur_frag = _build_blur_rect_filter(
                 blur_rect_x_pct,
                 blur_rect_y_pct,
@@ -200,28 +219,33 @@ def run_export_task(
                 blur_rect_blur,
                 blur_rect_color,
             )
-            # Compose: [0:v] → blur rect filter → [v_out] → ass subtitle
-            # Replace [v_in] in the blur_frag with [0:v] to properly link the input video
-            blur_frag_linked = blur_frag.replace("[v_in]", "[0:v]")
-            vf_chain = f"{blur_frag_linked};[v_out]{ass_filter}"
-            cmd = [
-                "ffmpeg", "-y",
-                "-i", video_path,
-                "-filter_complex", vf_chain,
-                "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
-                "-c:a", "copy",
-                out_path
-            ]
-        else:
-            # Original simple path: just -vf with ass filter
-            cmd = [
-                "ffmpeg", "-y",
-                "-i", video_path,
-                "-vf", ass_filter,
-                "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
-                "-c:a", "copy",
-                out_path
-            ]
+            blur_frag = blur_frag.replace("[v_in]", current_in)
+            current_out = f"[v{next_id}]"
+            blur_frag = blur_frag.replace("[v_out]", current_out)
+            filter_chain.append(blur_frag)
+            current_in = current_out
+            next_id += 1
+
+        # Finally add subtitles
+        final_ass_filter = f"{current_in}{ass_filter}"
+        # We don't necessarily need to name the final output or we can just leave it unnamed for the final mapped
+        # Actually it's cleaner to name it and map to it
+        current_out = f"[v{next_id}]"
+        final_ass_filter += f"{current_out}"
+        filter_chain.append(final_ass_filter)
+
+        vf_chain_str = ";".join(filter_chain)
+        
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-filter_complex", vf_chain_str,
+            "-map", current_out,
+            "-map", "0:a?",
+            "-c:v", "libx264", "-crf", "15", "-preset", "fast", "-pix_fmt", "yuv420p",
+            "-c:a", "copy",
+            out_path
+        ]
         
         # First, find total duration using ffprobe
         duration_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path]
@@ -238,8 +262,12 @@ def run_export_task(
         
         time_regex = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})")
         
+        ffmpeg_tail: list[str] = []
         # Read stderr line by line for progress tracking
         for line in process.stderr:
+            ffmpeg_tail.append(line.rstrip())
+            if len(ffmpeg_tail) > 40:
+                ffmpeg_tail.pop(0)
             match = time_regex.search(line)
             if match and total_duration > 0:
                 h, m, s = match.groups()
@@ -253,7 +281,8 @@ def run_export_task(
             job["status"] = "done"
             job["progress"] = 100.0
         else:
-            raise Exception(f"FFmpeg returned non-zero exit code {process.returncode}")
+            tail = "\n".join(ffmpeg_tail[-8:])
+            raise Exception(f"FFmpeg returned non-zero exit code {process.returncode}. Last log lines:\n{tail}")
             
     except Exception as e:
         job["status"] = "error"

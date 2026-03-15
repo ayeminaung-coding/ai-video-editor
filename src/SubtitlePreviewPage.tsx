@@ -40,10 +40,19 @@ const SubtitlePreviewPage: React.FC = () => {
             yPct: 86,
             widthPct: 79,
             heightPct: 13,
-            opacity: 9,
-            blurStrength: 9,
+            opacity: 21,
+            blurStrength: 13,
             color: '#ffffff',
         },
+        watermark: {
+            enabled: false,
+            text: '@WhiteCatDrama',
+            xPct: 10,
+            yPct: 49,
+            fontSize: 17,
+            color: '#ffffff',
+            opacity: 21,
+        }
     });
     const [exportProgress, setExportProgress] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
@@ -185,6 +194,18 @@ const SubtitlePreviewPage: React.FC = () => {
             formData.append('blur_rect_blur', br.blurStrength.toString());
             formData.append('blur_rect_color', br.color);
 
+            // Watermark params
+            if (subStyle.watermark) {
+                const wm = subStyle.watermark;
+                formData.append('watermark_enabled', wm.enabled ? 'true' : 'false');
+                formData.append('watermark_text', wm.text);
+                formData.append('watermark_x_pct', wm.xPct.toString());
+                formData.append('watermark_y_pct', wm.yPct.toString());
+                formData.append('watermark_font_size', wm.fontSize.toString());
+                formData.append('watermark_color', wm.color);
+                formData.append('watermark_opacity', wm.opacity.toString());
+            }
+
             // 1. Start export job
             const startRes = await fetch('http://localhost:8000/api/video/export/start', {
                 method: 'POST',
@@ -197,23 +218,56 @@ const SubtitlePreviewPage: React.FC = () => {
             }
 
             const { job_id } = await startRes.json();
+            if (!job_id) {
+                throw new Error('Export job id was not returned by server');
+            }
+
+            // Show immediate progress feedback while waiting for first backend tick.
+            setExportProgress(1);
 
             // 2. Poll for status
+            let consecutiveStatusFailures = 0;
             while (true) {
                 await new Promise(r => setTimeout(r, 1000));
 
-                const statusRes = await fetch(`http://localhost:8000/api/video/export/status/${job_id}`);
-                if (!statusRes.ok) throw new Error('Failed to get status');
+                let statusRes: Response;
+                try {
+                    statusRes = await fetch(`http://localhost:8000/api/video/export/status/${job_id}`);
+                } catch {
+                    consecutiveStatusFailures += 1;
+                    if (consecutiveStatusFailures >= 8) {
+                        throw new Error('Failed to get status after multiple retries');
+                    }
+                    continue;
+                }
 
+                if (!statusRes.ok) {
+                    consecutiveStatusFailures += 1;
+                    const statusText = await statusRes.text();
+
+                    // Job can be briefly unavailable; retry before failing hard.
+                    if (consecutiveStatusFailures < 8) {
+                        continue;
+                    }
+
+                    throw new Error(statusText || `Failed to get status (${statusRes.status})`);
+                }
+
+                consecutiveStatusFailures = 0;
                 const statusData = await statusRes.json();
 
                 if (statusData.status === 'error') {
                     throw new Error(statusData.error || 'Export failed during processing');
                 }
 
-                setExportProgress(statusData.progress || 0);
+                const nextProgress = Number(statusData.progress ?? 0);
+                setExportProgress(prev => {
+                    const safe = Number.isFinite(nextProgress) ? nextProgress : prev;
+                    return Math.min(99, Math.max(prev, safe));
+                });
 
                 if (statusData.status === 'done') {
+                    setExportProgress(100);
                     break;
                 }
             }
@@ -825,6 +879,93 @@ const SubtitlePreviewPage: React.FC = () => {
                                                     onChange={e => setSubStyle(s => ({ ...s, blurRect: { ...s.blurRect, blurStrength: Number(e.target.value) } }))}
                                                     className="w-full" />
                                                 <p className="text-xs text-text-tertiary mt-1">0 = solid fill · higher = frosted glass blur</p>
+                                            </div>
+
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Watermark Section ── */}
+                                <div className="bg-surface-secondary rounded-xl p-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-sm font-semibold text-text-primary">©️ Watermark Text</h3>
+                                        </div>
+                                        <button
+                                            onClick={() => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, enabled: !s.watermark?.enabled } }))}
+                                            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${subStyle.watermark?.enabled ? 'bg-accent-primary' : 'bg-surface-primary border border-border-primary'
+                                                }`}
+                                        >
+                                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${subStyle.watermark?.enabled ? 'translate-x-6' : 'translate-x-0'
+                                                }`} />
+                                        </button>
+                                    </div>
+
+                                    {subStyle.watermark?.enabled && (
+                                        <div className="space-y-4 pt-2 border-t border-border-primary animate-fade-in">
+                                            
+                                            {/* Text input */}
+                                            <div>
+                                                <label className="text-sm font-semibold text-text-primary mb-2 block">Text</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={subStyle.watermark.text}
+                                                    onChange={e => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, text: e.target.value } }))}
+                                                    className="w-full bg-surface-primary border border-border-primary rounded-lg px-3 py-2 text-text-primary text-sm focus:border-accent-primary outline-none"
+                                                    placeholder="@ChannelName"
+                                                />
+                                            </div>
+
+                                            {/* Font Size & Position X/Y */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <div className="flex justify-between mb-1">
+                                                        <label className="text-sm font-medium text-text-primary">Font Size</label>
+                                                        <span className="text-xs text-text-secondary font-mono">{subStyle.watermark.fontSize}px</span>
+                                                    </div>
+                                                    <input type="range" min={10} max={100} value={subStyle.watermark.fontSize}
+                                                        onChange={e => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, fontSize: Number(e.target.value) } }))}
+                                                        className="w-full" />
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between mb-1">
+                                                            <label className="text-xs font-medium text-text-secondary">X%</label>
+                                                            <span className="text-xs text-text-secondary font-mono">{Math.round(subStyle.watermark.xPct)}</span>
+                                                        </div>
+                                                        <input type="range" min={0} max={100} value={subStyle.watermark.xPct}
+                                                            onChange={e => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, xPct: Number(e.target.value) } }))}
+                                                            className="w-full" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between mb-1">
+                                                            <label className="text-xs font-medium text-text-secondary">Y%</label>
+                                                            <span className="text-xs text-text-secondary font-mono">{Math.round(subStyle.watermark.yPct)}</span>
+                                                        </div>
+                                                        <input type="range" min={0} max={100} value={subStyle.watermark.yPct}
+                                                            onChange={e => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, yPct: Number(e.target.value) } }))}
+                                                            className="w-full" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Color and Opacity */}
+                                            <div className="flex gap-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-xs font-medium text-text-secondary">Color</label>
+                                                    <input type="color" value={subStyle.watermark.color}
+                                                        onChange={e => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, color: e.target.value } }))}
+                                                        className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between mb-1">
+                                                        <label className="text-xs font-medium text-text-secondary">Opacity</label>
+                                                        <span className="text-xs text-text-secondary font-mono">{subStyle.watermark.opacity}%</span>
+                                                    </div>
+                                                    <input type="range" min={0} max={100} value={subStyle.watermark.opacity}
+                                                        onChange={e => setSubStyle(s => ({ ...s, watermark: { ...s.watermark!, opacity: Number(e.target.value) } }))}
+                                                        className="w-full" />
+                                                </div>
                                             </div>
 
                                         </div>
