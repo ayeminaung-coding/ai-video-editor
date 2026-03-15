@@ -46,7 +46,7 @@ const QueueEncoderPage: React.FC = () => {
     }, [jobs]);
 
     const [subStyle, setSubStyle] = useState<SubStyle>({
-        fontSize: 25,
+        fontSize: 28,
         color: '#ffffff',
         bgOpacity: 0,
         strokeEnabled: true,
@@ -63,8 +63,8 @@ const QueueEncoderPage: React.FC = () => {
             yPct: 86,
             widthPct: 79,
             heightPct: 13,
-            opacity: 21,
-            blurStrength: 13,
+            opacity: 30,
+            blurStrength: 20,
             color: '#ffffff',
         },
         watermark: {
@@ -551,6 +551,26 @@ const QueueEncoderPage: React.FC = () => {
                                         <input type="range" min={1} max={100} value={subStyle.blurRect.heightPct}
                                             onChange={e => setSubStyle(s => ({ ...s, blurRect: { ...s.blurRect, heightPct: Number(e.target.value) } }))}
                                             className="w-full" />
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between mb-1">
+                                            <label className="text-xs font-semibold text-text-primary">Blur Strength</label>
+                                            <span className="text-xs text-text-secondary font-mono">
+                                                {subStyle.blurRect.blurStrength === 0 ? 'Off' : `${subStyle.blurRect.blurStrength}px`}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={0}
+                                            max={30}
+                                            value={subStyle.blurRect.blurStrength}
+                                            onChange={e => setSubStyle(s => ({
+                                                ...s,
+                                                blurRect: { ...s.blurRect, blurStrength: Number(e.target.value) }
+                                            }))}
+                                            className="w-full"
+                                        />
                                     </div>
                                 </div>
                             )}
