@@ -45,6 +45,49 @@ def detect_silences(video_path: str, noise_db: float = -35.0, min_duration: floa
     return silences
 
 
+def split_video_by_duration(video_path: str, output_dir: str, duration: int = 135, original_filename: str = None) -> list[str]:
+    """
+    Split a video into segments of specific duration (e.g. 2 minutes 15 seconds = 135s)
+    Name format: original name + ( part- 1,2,3... ).mp4
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    if original_filename:
+        base_name = Path(original_filename).stem
+    else:
+        base_name = Path(video_path).stem
+
+    output_pattern = str(output_dir / f"{base_name} ( part- %d).mp4")
+    
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-c", "copy",              # Stream copy for immediate, 100% original quality
+        "-f", "segment",
+        "-segment_time", str(duration),
+        "-segment_start_number", "1",
+        "-reset_timestamps", "1",
+        output_pattern
+    ]
+    
+    subprocess.run(cmd, check=True, capture_output=True)
+    
+    generated_files = []
+    for file in os.listdir(output_dir):
+        if file.startswith(f"{base_name} ( part-") and file.endswith(".mp4"):
+            generated_files.append(str(output_dir / file))
+            
+    def extract_number(filename):
+        match = re.search(r"\( part- (\d+)\)", filename)
+        if match:
+            return int(match.group(1))
+        return 0
+
+    generated_files.sort(key=lambda x: extract_number(os.path.basename(x)))
+    return generated_files
+
+
 def smart_split(video_path: str, output_dir: str) -> dict:
     """
     Smart-split a video near its midpoint.

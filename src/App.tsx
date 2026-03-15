@@ -2,29 +2,30 @@
 // React component for the main application layout and routing
 
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from './ThemeContext';
-import { SettingsProvider } from './contexts/SettingsContext';
-import Header from './Header';
-import Sidebar from './Sidebar';
-import DashboardPage from './DashboardPage';
-import UploadPage from './UploadPage';
-import EditorPage from './EditorPage';
-import PreviewPage from './PreviewPage';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import CreatorToolsPage from './CreatorToolsPage';
-import ScriptHelperPage from './ScriptHelperPage';
-import WorkflowsPage from './WorkflowsPage';
 import CreatorWorkflowPage from './CreatorWorkflowPage';
+import DashboardPage from './DashboardPage';
+import EditorPage from './EditorPage';
+import Header from './Header';
+import MetadataRemoverPage from './MetadataRemoverPage';
+import PreviewPage from './PreviewPage';
 import ResourceFinderPage from './ResourceFinderPage';
-import TranslatePage from './TranslatePage';
+import ScriptHelperPage from './ScriptHelperPage';
+import Sidebar from './Sidebar';
 import SrtExporterPage from './SrtExporterPage';
 import SrtTranslatorPage from './SrtTranslatorPage';
 import SubtitlePreviewPage from './SubtitlePreviewPage';
-import MetadataRemoverPage from './MetadataRemoverPage';
-import TikTokChangerPage from './TikTokChangerPage';
-import VideoAutomationPage from './VideoAutomationPage';
+import { ThemeProvider } from './ThemeContext';
 import ThumbnailCoverPage from './ThumbnailCoverPage';
+import TikTokChangerPage from './TikTokChangerPage';
+import TranslatePage from './TranslatePage';
+import UploadPage from './UploadPage';
+import VideoAutomationPage from './VideoAutomationPage';
+import VideoSplitterPage from './VideoSplitterPage';
+import WorkflowsPage from './WorkflowsPage';
 import SettingsModal from './components/SettingsModal';
+import { SettingsProvider } from './contexts/SettingsContext';
 
 interface EditSettings {
   trimStart: number;
@@ -174,6 +175,10 @@ const App: React.FC = () => {
                   <Route
                     path="/tiktok-changer"
                     element={<TikTokChangerPage />}
+                  />
+                  <Route
+                    path="/video-splitter"
+                    element={<VideoSplitterPage />}
                   />
                   <Route
                     path="/video-automation"

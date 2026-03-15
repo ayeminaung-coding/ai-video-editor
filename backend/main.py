@@ -23,6 +23,7 @@ from routers.srt_translator import router as srt_translator_router
 from routers.gemini_models import router as gemini_models_router
 from routers.metadata import router as metadata_router
 from routers.tiktok_changer import router as tiktok_changer_router
+from routers.video_splitter import router as video_splitter_router
 
 # Configure logging
 logging.basicConfig(
@@ -94,6 +95,7 @@ app.include_router(srt_translator_router)
 app.include_router(gemini_models_router)
 app.include_router(metadata_router)
 app.include_router(tiktok_changer_router)
+app.include_router(video_splitter_router)
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────
