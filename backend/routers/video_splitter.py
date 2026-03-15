@@ -24,11 +24,11 @@ def _run_split(job_id: str, video_path: str, out_dir: str, original_filename: st
         job["status"] = "processing"
 
         # This will create files in out_dir
-        # Duration fixed to 135 seconds (2:15 minutes) as requested
+        # Duration fixed to 125 seconds (2:05 minutes) as requested
         split_files = split_video_by_duration(
             video_path, 
             out_dir, 
-            duration=135,
+            duration=125,
             original_filename=original_filename
         )
 

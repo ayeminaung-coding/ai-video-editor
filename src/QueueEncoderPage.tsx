@@ -132,7 +132,7 @@ const QueueEncoderPage: React.FC = () => {
                 formData.append("color", subStyle.color);
                 formData.append("alignment", String(subStyle.alignment));
                 formData.append("bg_opacity", String(subStyle.bgOpacity));
-                formData.append("font_name", subStyle.fontName || "Padauk");
+                formData.append("font_name", "Padauk");
                 
                 formData.append("stroke_enabled", String(subStyle.strokeEnabled));
                 formData.append("stroke_color", subStyle.strokeColor);

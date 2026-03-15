@@ -45,9 +45,9 @@ def detect_silences(video_path: str, noise_db: float = -35.0, min_duration: floa
     return silences
 
 
-def split_video_by_duration(video_path: str, output_dir: str, duration: int = 135, original_filename: str = None) -> list[str]:
+def split_video_by_duration(video_path: str, output_dir: str, duration: int = 125, original_filename: str = None) -> list[str]:
     """
-    Split a video into segments of specific duration (e.g. 2 minutes 15 seconds = 135s)
+    Split a video into segments of specific duration (e.g. 2 minutes 5 seconds = 125s)
     Name format: original name + ( part- 1,2,3... ).mp4
     """
     output_dir = Path(output_dir)

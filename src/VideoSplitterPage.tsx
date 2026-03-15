@@ -110,7 +110,7 @@ const VideoSplitterPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Video Splitter</h1>
           <p className="text-text-secondary mt-1 text-sm">
-            Split a long video into segments of exactly 2 minutes and 15 seconds.
+            Split a long video into segments of exactly 2 minutes and 5 seconds.
           </p>
         </div>
       </div>
@@ -154,7 +154,7 @@ const VideoSplitterPage: React.FC = () => {
             {status.status === 'processing' && (
               <div className="space-y-4 text-center mt-4 mb-4">
                 <div className="w-12 h-12 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-text-secondary text-sm animate-pulse">Splitting video into 2:15 segments...</p>
+                <p className="text-text-secondary text-sm animate-pulse">Splitting video into 2:05 segments...</p>
               </div>
             )}
             {status.status === 'error' && (
