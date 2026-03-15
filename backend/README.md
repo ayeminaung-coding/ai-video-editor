@@ -83,6 +83,16 @@ python -m uvicorn main:app --reload --port 8000
 
 Server starts at → **http://localhost:8000**
 
+### 7. Run Queue OCR worker (if using `/api/queue_ocr/*`)
+
+From `backend/`:
+
+```bash
+python -m services.queue_worker
+```
+
+You can also use the service module path (`python -m services.queue_worker`) directly.
+
 ---
 
 ## Verify It's Working

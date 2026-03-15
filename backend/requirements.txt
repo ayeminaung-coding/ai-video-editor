@@ -35,3 +35,5 @@ Pillow==11.0.0
 # Logging & monitoring
 python-json-logger==2.0.7
 pytest-mock
+redis 
+rq

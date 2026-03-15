@@ -10,6 +10,7 @@ import EditorPage from './EditorPage';
 import Header from './Header';
 import MetadataRemoverPage from './MetadataRemoverPage';
 import PreviewPage from './PreviewPage';
+import QueueOcrPage from './QueueOcrPage';
 import ResourceFinderPage from './ResourceFinderPage';
 import ScriptHelperPage from './ScriptHelperPage';
 import Sidebar from './Sidebar';
@@ -183,6 +184,10 @@ const App: React.FC = () => {
                   <Route
                     path="/video-automation"
                     element={<VideoAutomationPage />}
+                  />
+                  <Route
+                    path="/queue-ocr"
+                    element={<QueueOcrPage />}
                   />
                   <Route
                     path="/thumbnail-cover"

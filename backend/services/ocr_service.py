@@ -74,12 +74,37 @@ MIN_LINE_DURATION = 0.15
 MIN_LINE_GAP = 0.08
 
 
+def _coerce_text(data: str | bytes | None) -> str:
+    """Normalize subprocess outputs into a safe string."""
+    if data is None:
+        return ""
+    if isinstance(data, str):
+        return data
+    try:
+        return data.decode("utf-8", errors="replace")
+    except Exception:
+        return data.decode(errors="replace")
+
+
+def _run_capture_text(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
+    """Run subprocess with deterministic UTF-8 decoding and replacement on decode errors."""
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=check,
+    )
+
+
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
     """Run subprocess with better error handling."""
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return _run_capture_text(cmd, check=True)
     except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {' '.join(cmd[:5])}... - {e.stderr[:200] if e.stderr else 'no output'}")
+        stderr_text = _coerce_text(e.stderr)
+        logger.error(f"Command failed: {' '.join(cmd[:5])}... - {stderr_text[:200] if stderr_text else 'no output'}")
         raise
     except FileNotFoundError as e:
         logger.error(f"Command not found: {cmd[0]}")
@@ -183,7 +208,7 @@ def _extract_keyframes_for_subtitles(
     )
 
     try:
-        proc = subprocess.run(
+        proc = _run_capture_text(
             [
                 "ffmpeg", "-y",
                 "-i", video_path,
@@ -192,16 +217,16 @@ def _extract_keyframes_for_subtitles(
                 "-q:v", "4",
                 out_pattern,
             ],
-            capture_output=True,
-            text=True,
             check=True,
         )
     except subprocess.CalledProcessError as e:
-        logger.error(f"FFmpeg keyframe extraction failed: {e.stderr[:500] if e.stderr else 'unknown error'}")
+        stderr_text = _coerce_text(e.stderr)
+        logger.error(f"FFmpeg keyframe extraction failed: {stderr_text[:500] if stderr_text else 'unknown error'}")
         raise
 
     pts_times: list[float] = []
-    for line in proc.stderr.splitlines():
+    stderr_text = _coerce_text(proc.stderr)
+    for line in stderr_text.splitlines():
         m = re.search(r"pts_time:([0-9]+(?:\.[0-9]+)?)", line)
         if m:
             pts_times.append(float(m.group(1)))

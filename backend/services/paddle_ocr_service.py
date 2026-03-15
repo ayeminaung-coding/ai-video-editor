@@ -26,9 +26,13 @@ from typing import Callable, Optional, Dict
 # Disable OneDNN/MKL-DNN at the C++ environment level BEFORE any paddle import.
 # `enable_mkldnn=False` in PaddleOCR() is ignored by paddlepaddle 3.x on Windows,
 # causing the "OneDnnContext does not have the input Filter" crash.
-os.environ.setdefault("FLAGS_use_mkldnn", "0")
-os.environ.setdefault("FLAGS_mkldnn_ops_list", "")
-os.environ.setdefault("CPU_NUM_THREADS", "1")
+# We use aggressive environment variable setting to ensure MKLDNN is disabled.
+os.environ["FLAGS_allocator_strategy"] = 'auto_growth'
+os.environ["FLAGS_use_mkldnn"] = "0"
+os.environ["FLAGS_enable_mkldnn"] = "0"
+os.environ["FLAGS_mkldnn_ops_list"] = ""
+os.environ["CPU_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import cv2
 import numpy as np
@@ -225,11 +229,13 @@ def _ocr_frame(img: np.ndarray, lang: str) -> str:
     try:
         result = paddle.ocr(img, cls=False)
     except Exception as e:
+        first_error = str(e)
         logger.debug(f"PaddleOCR ocr(cls=False) failed: {e}")
         try:
+            # Retry with default settings (might trigger cls warning if disabled in init)
             result = paddle.ocr(img)
         except Exception as e2:
-            logger.warning(f"PaddleOCR all variants failed: {e2}")
+            logger.warning(f"PaddleOCR all variants failed. First error: {first_error}. Second error: {e2}")
             return ""
 
     if not result:
