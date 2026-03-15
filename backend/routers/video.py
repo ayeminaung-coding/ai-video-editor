@@ -298,7 +298,7 @@ async def start_export_video(
     blur_rect_blur: int = Form(13),               # blur radius px 0–30
     blur_rect_color: str = Form("#ffffff"),       # hex fill color
     # ── Watermark params ──────────────────────────────────────────────────────
-    watermark_enabled: str = Form("false"),
+    watermark_enabled: str = Form("true"),
     watermark_text: str = Form("@DramaSubsTV"),
     watermark_x_pct: float = Form(10.0),
     watermark_y_pct: float = Form(10.0),

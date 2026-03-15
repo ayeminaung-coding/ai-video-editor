@@ -45,7 +45,7 @@ const SubtitlePreviewPage: React.FC = () => {
             color: '#ffffff',
         },
         watermark: {
-            enabled: false,
+            enabled: true,
             text: '@WhiteCatDrama',
             xPct: 10,
             yPct: 49,

@@ -97,7 +97,7 @@ async def queue_encoder_job(
     blur_rect_opacity: int = Form(21),
     blur_rect_blur: int = Form(13),
     blur_rect_color: str = Form("#ffffff"),
-    watermark_enabled: str = Form("false"),
+    watermark_enabled: str = Form("true"),
     watermark_text: str = Form("@DramaSubsTV"),
     watermark_x_pct: float = Form(10.0),
     watermark_y_pct: float = Form(10.0),
@@ -134,6 +134,38 @@ async def queue_encoder_job(
     with open(srt_path, "wb") as out_srt:
         while chunk := await srt_file.read(1024 * 1024):
             out_srt.write(chunk)
+            
+    # Copy Burmese-capable fonts into temp directory so ffmpeg/libass can find them.
+    from pathlib import Path
+    import shutil
+    
+    font_dir = os.path.join(tmpdir, "fonts")
+    os.makedirs(font_dir, exist_ok=True)
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    font_candidates = [
+        ("Padauk-Regular.ttf", "Padauk"),
+        ("Padauk-Bold.ttf", "Padauk"),
+        ("Pyidaungsu.ttf", "Pyidaungsu"),
+        ("Zawgyi-One.ttf", "Zawgyi-One"),
+    ]
+    copied_fonts = 0
+    selected_font_name = None
+    for filename, family in font_candidates:
+        src = repo_root / "src" / "font" / filename
+        if src.exists():
+            shutil.copy2(src, os.path.join(font_dir, filename))
+            copied_fonts += 1
+            if selected_font_name is None:
+                selected_font_name = family
+
+    if copied_fonts > 0:
+        font_dir_param = "fonts"
+        if not font_name:
+            font_name = selected_font_name or "Padauk"
+    else:
+        font_dir_param = None
+        if not font_name:
+            font_name = "Arial"
             
     style_opts = {
         "font_size": font_size,
